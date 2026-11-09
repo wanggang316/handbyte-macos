@@ -1,10 +1,10 @@
-# Build the Handbyte macOS app for a tag app/vX.Y.Z (the CLI uses v* in
-# release.yml) and attach it to a draft GitHub Release.
+# Build the Handbyte macOS app for a tag vX.Y.Z and attach it to a draft
+# GitHub Release.
 #
-# macos/scripts/release.sh signs with Developer ID, notarizes, builds the DMG
+# scripts/release.sh signs with Developer ID, notarizes, builds the DMG
 # and writes the Sparkle appcast. The draft release carries
 # Handbyte-X.Y.Z.dmg, its .sha256, the stable-named Handbyte.dmg and
-# appcast.xml. Publishing the draft is a human step; macos-publish.yml then
+# appcast.xml. Publishing the draft is a human step; publish.yml then
 # copies the appcast to GitHub Pages and updates the Homebrew cask.
 #
 # Repository secrets (Settings > Secrets and variables > Actions). None are
@@ -23,26 +23,26 @@
 #   SPARKLE_PRIVATE_KEY           `<sparkle>/bin/generate_keys -x key.txt` on the
 #                                 machine that holds the Sparkle key; the file
 #                                 content. Its public half is SUPublicEDKey in
-#                                 macos/project.yml.
+#                                 project.yml.
 #
 # GITHUB_TOKEN (automatic) creates the draft release.
-name: macos-release
+name: release
 
 on:
   push:
     tags:
-      - 'app/v*'
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing tag to build again (app/vX.Y.Z)'
+        description: 'Existing tag to build again (vX.Y.Z)'
         required: true
 
 permissions:
   contents: write
 
 concurrency:
-  group: macos-release
+  group: release
   cancel-in-progress: false
 
 jobs:
@@ -59,12 +59,12 @@ jobs:
         run: |
           set -euo pipefail
           TAG="${INPUT_TAG:-$GITHUB_REF_NAME}"
-          if [[ ! "$TAG" =~ ^app/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::tag '$TAG' does not match app/vX.Y.Z"
+          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::tag '$TAG' does not match vX.Y.Z"
             exit 1
           fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "version=${TAG#app/v}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
 
       - name: Check secrets
         env:
@@ -94,13 +94,13 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
-          source macos/scripts/release-lib.sh
-          PROJECT_VERSION="$(release_marketing_version macos/project.yml)"
+          source scripts/release-lib.sh
+          PROJECT_VERSION="$(release_marketing_version project.yml)"
           if [ "$PROJECT_VERSION" != "$VERSION" ]; then
-            echo "::error::tag version $VERSION != project.yml MARKETING_VERSION $PROJECT_VERSION; run make -C macos bump-version before tagging"
+            echo "::error::tag version $VERSION != project.yml MARKETING_VERSION $PROJECT_VERSION; run make bump-version before tagging"
             exit 1
           fi
-          release_changelog_section macos/CHANGELOG.md "$VERSION" > /dev/null
+          release_changelog_section CHANGELOG.md "$VERSION" > /dev/null
 
       - name: Select Xcode
         run: |
@@ -110,12 +110,12 @@ jobs:
       - name: Install tools
         run: brew install xcodegen create-dmg
 
-      # The same gates as macos-ci, before any secret is touched.
+      # The same gates as ci.yml, before any secret is touched.
       - name: Check rule ids and run tests
         run: |
-          make -C macos sync-check
-          make -C macos test
-          make -C macos test-scripts
+          make sync-check
+          make test
+          make test-scripts
 
       - name: Import Developer ID certificate
         env:
@@ -153,10 +153,9 @@ jobs:
           AC_API_KEY_P8: ${{ secrets.AC_API_KEY_P8 }}
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
           VERSION: ${{ steps.meta.outputs.version }}
-        run: make -C macos release VERSION="$VERSION"
+        run: make release VERSION="$VERSION"
 
       # Re-entrant: a rerun finds the draft in place and replaces its assets.
-      # --latest=false keeps releases/latest on the CLI, which install.sh reads.
       - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -164,7 +163,7 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
-          cd macos/dist
+          cd dist
           ASSETS=("Handbyte-$VERSION.dmg" "Handbyte-$VERSION.dmg.sha256" Handbyte.dmg appcast.xml)
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber
@@ -172,7 +171,6 @@ jobs:
           else
             gh release create "$TAG" \
               --draft \
-              --latest=false \
               --title "Handbyte $VERSION" \
               --notes-file "Handbyte-$VERSION.md" \
               "${ASSETS[@]}"

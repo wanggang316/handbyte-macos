@@ -1,11 +1,13 @@
 # CLI and app rule synchronization
 
-The Go CLI (`internal/scanner/presets.go`) and the macOS app
-(`macos/Sources/HandbyteCore/Catalog.swift`) are separate implementations of
+The Go CLI (`internal/scanner/presets.go` in
+[wanggang316/handbyte](https://github.com/wanggang316/handbyte)) and this app
+(`Sources/HandbyteCore/Catalog.swift`) are separate implementations of
 the same cleanup scope. They stay aligned through identical rule ids: the id a
 rule carries in the app is the exact string the CLI prints as `Source`.
-`macos/scripts/sync-check.sh` compares the two id sets and fails CI on any
-difference. This file is the human-maintained record of where each rule stands.
+`scripts/sync-check.sh` compares the two id sets and fails CI on any
+difference; it reads the CLI from `HANDBYTE_CLI_SRC` or downloads `presets.go`
+from the CLI's `main` branch. This file is the human-maintained record of where each rule stands.
 
 States:
 
@@ -74,6 +76,6 @@ Scan-wide differences that belong to no single rule:
 
 | Behaviour | CLI | App | Note |
 |---|---|---|---|
-| Hard links | Intentional difference | Implemented | The CLI counts every hard link to a file, so a file with two links is counted twice. The app counts an inode once per scan, so the sum over all candidates equals the bytes a cleanup can free. `macos/scripts/parity.sh` reports both effects as expected size differences. |
+| Hard links | Intentional difference | Implemented | The CLI counts every hard link to a file, so a file with two links is counted twice. The app counts an inode once per scan, so the sum over all candidates equals the bytes a cleanup can free. `scripts/parity.sh` reports both effects as expected size differences. |
 | Operations journal | Intentional difference | Intentional difference | The CLI appends JSON Lines to `actions.jsonl` and reads it back for `restore`. The app appends tab-separated lines to `~/Library/Logs/handbyte/operations.log` as an audit trail only. Neither side reads the other file. |
 | Settings file | Intentional difference | Intentional difference | The CLI stores roots and exclusions in its own `config.json`. The app stores deletion mode, minimum size, roots and exclusions in `~/Library/Application Support/Handbyte/settings.json`. Neither side reads the other file. |

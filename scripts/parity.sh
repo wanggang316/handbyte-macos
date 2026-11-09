@@ -4,14 +4,16 @@
 #
 # usage: scripts/parity.sh [--go-bin <handbyte>] [--min <size>] [--roots <a,b>] [--no-projects] [--workers <n>]
 #
+# The Go CLI comes from --go-bin, else `handbyte` on PATH, else `go run` in
+# the checkout named by HANDBYTE_CLI_SRC.
+#
 # Both scanners run against the real home directory. Expected differences:
 # the Go CLI lists ~/Library/Caches children twice when a specific preset also
 # matches them, and it does not deduplicate hard links.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-macos_dir="$repo_root/macos"
-go_bin=""
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+go_bin="$(command -v handbyte || true)"
 pass_args=()
 
 while [ $# -gt 0 ]; do
@@ -20,7 +22,7 @@ while [ $# -gt 0 ]; do
         --go-bin=*) go_bin="${1#--go-bin=}"; shift ;;
         --min|--roots|--workers) pass_args+=("$1=$2"); shift 2 ;;
         --min=*|--roots=*|--workers=*|--no-projects) pass_args+=("$1"); shift ;;
-        -h|--help) sed -n '2,10p' "$0"; exit 0 ;;
+        -h|--help) sed -n '2,13p' "$0"; exit 0 ;;
         *) echo "parity: unknown argument $1" >&2; exit 2 ;;
     esac
 done
@@ -29,14 +31,17 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/handbyte-parity.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 
 echo "parity: building hbscan" >&2
-swift build -c release --package-path "$macos_dir" --product hbscan >/dev/null
-hbscan="$(swift build -c release --package-path "$macos_dir" --show-bin-path)/hbscan"
+swift build -c release --package-path "$repo_root" --product hbscan >/dev/null
+hbscan="$(swift build -c release --package-path "$repo_root" --show-bin-path)/hbscan"
 
 echo "parity: running Go scanner" >&2
 if [ -n "$go_bin" ]; then
     "$go_bin" --scan-only "${pass_args[@]+"${pass_args[@]}"}" > "$work/go.json"
+elif [ -n "${HANDBYTE_CLI_SRC:-}" ]; then
+    (cd "$HANDBYTE_CLI_SRC" && go run . --scan-only "${pass_args[@]+"${pass_args[@]}"}") > "$work/go.json"
 else
-    (cd "$repo_root" && go run . --scan-only "${pass_args[@]+"${pass_args[@]}"}") > "$work/go.json"
+    echo "parity: no Go CLI; pass --go-bin, install handbyte, or set HANDBYTE_CLI_SRC" >&2
+    exit 2
 fi
 
 echo "parity: running hbscan" >&2

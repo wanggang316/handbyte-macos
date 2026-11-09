@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Build a signed, notarized Handbyte release: archive, notarize, DMG and
-# Sparkle appcast. Outputs go to macos/dist/.
+# Sparkle appcast. Outputs go to dist/.
 #
 # Usage: release.sh [--version X.Y.Z] [--notes FILE]
 #
 #   --version  Expected marketing version. Fails when it differs from
 #              MARKETING_VERSION in project.yml (CI passes the tag version).
 #   --notes    Markdown release notes for this version. Default: the
-#              "## [X.Y.Z]" section of macos/CHANGELOG.md.
+#              "## [X.Y.Z]" section of CHANGELOG.md.
 #
 # Environment:
 #   DERIVED_DATA              Xcode derived data path (default: .dd)
@@ -20,17 +20,18 @@
 #   SPARKLE_PRIVATE_KEY       EdDSA private key for generate_appcast (CI).
 #                             Default: the key in the login keychain.
 #   DOWNLOAD_URL_PREFIX       Where the DMG is published
-#                             (default: GitHub release for tag app/v$VERSION)
-#   PREVIOUS_APPCAST          Published feed to extend (default: ../docs/appcast.xml)
+#                             (default: GitHub release for tag v$VERSION)
+#   PREVIOUS_APPCAST          Published feed to extend (default: download
+#                             https://handbyte.gumpw.com/appcast.xml; none
+#                             when that returns 404)
 #
 # Notarization runs only when credentials exist; otherwise the step prints
 # SKIPPED and the unnotarized artifacts are still produced.
 set -euo pipefail
 
-MACOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-REPO_DIR="$(cd "$MACOS_DIR/.." && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=release-lib.sh
-source "$MACOS_DIR/scripts/release-lib.sh"
+source "$REPO_DIR/scripts/release-lib.sh"
 
 usage_error() {
   echo "release.sh: $1" >&2
@@ -51,11 +52,12 @@ done
 
 DERIVED_DATA="${DERIVED_DATA:-.dd}"
 NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-handbyte-notary}"
-PREVIOUS_APPCAST="${PREVIOUS_APPCAST:-$REPO_DIR/docs/appcast.xml}"
+PREVIOUS_APPCAST="${PREVIOUS_APPCAST:-}"
+FEED_URL="https://handbyte.gumpw.com/appcast.xml"
 SCHEME=Handbyte
 APP_NAME=Handbyte
 
-DIST="$MACOS_DIR/dist"
+DIST="$REPO_DIR/dist"
 BUILD="$DIST/build"
 UPDATES="$DIST/updates"
 ARCHIVE="$BUILD/$APP_NAME.xcarchive"
@@ -81,18 +83,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-cd "$MACOS_DIR"
+cd "$REPO_DIR"
 rm -rf "$DIST"
 mkdir -p "$DIST/logs" "$UPDATES" "$BUILD"
 
 # --- version ---------------------------------------------------------------
-VERSION="$(release_marketing_version "$MACOS_DIR/project.yml")"
-BUILD_NUMBER="$(release_build_number "$MACOS_DIR/project.yml")"
+VERSION="$(release_marketing_version "$REPO_DIR/project.yml")"
+BUILD_NUMBER="$(release_build_number "$REPO_DIR/project.yml")"
 if [[ -n "$EXPECTED_VERSION" && "$EXPECTED_VERSION" != "$VERSION" ]]; then
   echo "release.sh: --version $EXPECTED_VERSION differs from project.yml MARKETING_VERSION $VERSION; run scripts/bump-version.sh first" >&2
   exit 1
 fi
-DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/wanggang316/handbyte/releases/download/app/v$VERSION/}"
+DOWNLOAD_URL_PREFIX="${DOWNLOAD_URL_PREFIX:-https://github.com/wanggang316/handbyte-macos/releases/download/v$VERSION/}"
 DMG="$UPDATES/$APP_NAME-$VERSION.dmg"
 NOTES="$UPDATES/$APP_NAME-$VERSION.md"
 
@@ -102,7 +104,7 @@ step "Release $APP_NAME $VERSION (build $BUILD_NUMBER)"
 if [[ -n "$NOTES_FILE" ]]; then
   cp "$NOTES_FILE" "$NOTES"
 else
-  release_changelog_section "$MACOS_DIR/CHANGELOG.md" "$VERSION" > "$NOTES"
+  release_changelog_section "$REPO_DIR/CHANGELOG.md" "$VERSION" > "$NOTES"
 fi
 echo "Release notes: $(wc -l < "$NOTES" | tr -d ' ') lines"
 
@@ -231,7 +233,15 @@ if [[ -z "$SPARKLE_BIN" ]]; then
 fi
 # Start from the published feed so earlier versions stay in it; the .md next
 # to the DMG becomes the item's embedded release notes.
-if [[ -f "$PREVIOUS_APPCAST" ]]; then
+if [[ -z "$PREVIOUS_APPCAST" ]]; then
+  if curl -fsSL "$FEED_URL" -o "$DIST/previous-appcast.xml"; then
+    PREVIOUS_APPCAST="$DIST/previous-appcast.xml"
+  else
+    echo "No published feed at $FEED_URL; starting a new one"
+  fi
+fi
+if [[ -n "$PREVIOUS_APPCAST" ]]; then
+  [[ -f "$PREVIOUS_APPCAST" ]] || { echo "release.sh: PREVIOUS_APPCAST $PREVIOUS_APPCAST not found" >&2; exit 1; }
   cp "$PREVIOUS_APPCAST" "$UPDATES/appcast.xml"
   echo "Extending published feed $PREVIOUS_APPCAST"
 fi

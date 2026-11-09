@@ -1,8 +1,8 @@
 # Homebrew cask for the Handbyte macOS app.
 #
-# This file is the template for the published cask. When an app release
-# (tag app/vX.Y.Z) is published, .github/workflows/macos-publish.yml stamps
-# `version` and `sha256` with macos/scripts/render-cask.sh and pushes the
+# This file is the template for the published cask. When a release
+# (tag vX.Y.Z) is published, .github/workflows/publish.yml stamps
+# `version` and `sha256` with scripts/render-cask.sh and pushes the
 # result to wanggang316/homebrew-tap, so that
 # `brew install --cask wanggang316/tap/handbyte` installs the latest DMG.
 #
@@ -12,8 +12,8 @@ cask "handbyte" do
   version "0.1.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/wanggang316/handbyte/releases/download/app/v#{version}/Handbyte-#{version}.dmg",
-      verified: "github.com/wanggang316/handbyte/"
+  url "https://github.com/wanggang316/handbyte-macos/releases/download/v#{version}/Handbyte-#{version}.dmg",
+      verified: "github.com/wanggang316/handbyte-macos/"
   name "Handbyte"
   desc "Review and clean caches and build output on your Mac"
   homepage "https://handbyte.gumpw.com"

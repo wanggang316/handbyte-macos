@@ -2,15 +2,30 @@
 # Fails when the rule ids in the Go CLI presets and the Swift catalog differ.
 # Reads both sources with grep so no Go or Swift toolchain is needed.
 #
+# The CLI lives in wanggang316/handbyte. HANDBYTE_CLI_SRC names a local
+# checkout of it; without one, presets.go is downloaded from GitHub at
+# HANDBYTE_CLI_REF (default: main).
+#
 # Go ids:    every `Source: "<id>"` in presets.go, plus `artifact:<Name>` for
 #            every row of ProjectArtifactPatterns.
 # Swift ids: every `preset(id: "<id>"` in Catalog.swift, plus `artifact:<name>`
 #            for every `artifact(name: "<name>"`.
 set -euo pipefail
 
-repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-go_presets="$repo_root/internal/scanner/presets.go"
-swift_catalog="$repo_root/macos/Sources/HandbyteCore/Catalog.swift"
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+swift_catalog="$repo_root/Sources/HandbyteCore/Catalog.swift"
+cli_ref="${HANDBYTE_CLI_REF:-main}"
+
+if [ -n "${HANDBYTE_CLI_SRC:-}" ]; then
+    go_presets="$HANDBYTE_CLI_SRC/internal/scanner/presets.go"
+    go_label="$go_presets"
+else
+    go_presets="$(mktemp "${TMPDIR:-/tmp}/presets.XXXXXX")"
+    trap 'rm -f "$go_presets"' EXIT
+    go_label="handbyte@$cli_ref internal/scanner/presets.go"
+    curl -fsSL "https://raw.githubusercontent.com/wanggang316/handbyte/$cli_ref/internal/scanner/presets.go" -o "$go_presets" \
+        || { echo "sync-check: cannot download presets.go at ref $cli_ref" >&2; exit 2; }
+fi
 
 for f in "$go_presets" "$swift_catalog"; do
     if [ ! -f "$f" ]; then
@@ -49,11 +64,11 @@ fi
 
 echo "sync-check: rule ids differ between the Go CLI and the Swift catalog" >&2
 if [ -n "$only_go" ]; then
-    echo "only in Go (internal/scanner/presets.go):" >&2
+    echo "only in Go ($go_label):" >&2
     printf '  %s\n' $only_go >&2
 fi
 if [ -n "$only_swift" ]; then
-    echo "only in Swift (macos/Sources/HandbyteCore/Catalog.swift):" >&2
+    echo "only in Swift (Sources/HandbyteCore/Catalog.swift):" >&2
     printf '  %s\n' $only_swift >&2
 fi
 echo "Update the other side or record an intentional difference in SYNC.md." >&2

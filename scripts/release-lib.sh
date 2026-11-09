@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Helper functions for macos/scripts/release.sh and bump-version.sh. Source
-# this file; do not run it. Tests: macos/scripts/tests/release-lib.test.sh
+# Helper functions for scripts/release.sh and bump-version.sh. Source
+# this file; do not run it. Tests: scripts/tests/release-lib.test.sh
 
 # Print one quoted build setting from an xcodegen project.yml.
 release_project_setting() {
@@ -23,13 +23,13 @@ release_build_number() {
   release_project_setting "$1" CURRENT_PROJECT_VERSION
 }
 
-# Print the version part of an app release tag such as app/v1.2.3.
+# Print the version part of a release tag such as v1.2.3.
 release_version_from_tag() {
   local tag=$1
-  if [[ "$tag" =~ ^app/v([0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.]+)?)$ ]]; then
+  if [[ "$tag" =~ ^v([0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.]+)?)$ ]]; then
     printf '%s\n' "${BASH_REMATCH[1]}"
   else
-    echo "release-lib: '$tag' is not an app release tag (expected app/vX.Y.Z)" >&2
+    echo "release-lib: '$tag' is not a release tag (expected vX.Y.Z)" >&2
     return 1
   fi
 }

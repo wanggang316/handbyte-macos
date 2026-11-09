@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Set MARKETING_VERSION and CURRENT_PROJECT_VERSION in macos/project.yml.
+# Set MARKETING_VERSION and CURRENT_PROJECT_VERSION in project.yml.
 #
 # project.yml is the single source of truth the release workflow checks
-# against: tag app/vX.Y.Z must match MARKETING_VERSION. The build number uses
+# against: tag vX.Y.Z must match MARKETING_VERSION. The build number uses
 # the YYYYMMDDNNN scheme (20261109001, 20261109002, ...); the published
 # appcast supplies the highest build already shipped so a new build is always
 # higher, even after a squash merge or on another branch.
@@ -17,11 +17,11 @@
 #                (default: https://handbyte.gumpw.com/appcast.xml)
 set -euo pipefail
 
-MACOS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=release-lib.sh
-source "$MACOS_DIR/scripts/release-lib.sh"
+source "$REPO_DIR/scripts/release-lib.sh"
 
-PROJECT_YML="$MACOS_DIR/project.yml"
+PROJECT_YML="$REPO_DIR/project.yml"
 APPCAST_URL="${APPCAST_URL:-https://handbyte.gumpw.com/appcast.xml}"
 
 die() { echo "bump-version: $*" >&2; exit 1; }

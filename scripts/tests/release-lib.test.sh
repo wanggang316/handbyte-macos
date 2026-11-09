@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for macos/scripts/release-lib.sh. Run: make -C macos test-scripts
+# Tests for scripts/release-lib.sh. Run: make test-scripts
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -52,12 +52,12 @@ assert_fails "marketing version fails when the key is missing" \
   release_marketing_version "$TMP/empty.yml"
 
 # --- release_version_from_tag --------------------------------------------
-assert_eq "app tag maps to its version" \
-  "1.2.3" "$(release_version_from_tag "app/v1.2.3")"
+assert_eq "release tag maps to its version" \
+  "1.2.3" "$(release_version_from_tag "v1.2.3")"
 assert_eq "pre-release suffix is preserved" \
-  "1.2.3-beta.1" "$(release_version_from_tag "app/v1.2.3-beta.1")"
-assert_fails "CLI tag is rejected" release_version_from_tag "v1.2.3"
-assert_fails "non-numeric version is rejected" release_version_from_tag "app/vlatest"
+  "1.2.3-beta.1" "$(release_version_from_tag "v1.2.3-beta.1")"
+assert_fails "prefixed tag is rejected" release_version_from_tag "app/v1.2.3"
+assert_fails "non-numeric version is rejected" release_version_from_tag "vlatest"
 
 # --- release_next_build ------------------------------------------------------
 assert_eq "first build of a day starts at 001" \
