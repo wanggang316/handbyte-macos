@@ -1,17 +1,18 @@
 ---
 name: release
-description: Cut a Handbyte macOS app release. Write the release notes into CHANGELOG.md, pick the Semantic Versioning bump from them, bump project.yml, open a release PR, and after it merges tag the merged commit vX.Y.Z to start the release workflow, then publish the draft release once it passes. Use when shipping a new app build.
+description: Cut a Handbyte macOS app release. Write the release notes into CHANGELOG.md, pick the Semantic Versioning bump from them, bump project.yml, open a release PR; merging it starts CI to tag, build, publish, and distribute the release. Use when shipping a new app build.
 ---
 
 # release: Cut a Handbyte app release
 
-An app release is **a release PR, then a tag push**. The PR lands the version
-bump and the release notes on `main`. The tag `vX.Y.Z` on the merged
-commit starts `.github/workflows/release.yml`: it builds, signs,
-notarizes, writes the Sparkle `appcast.xml` and opens a **draft** GitHub
-Release with the DMG. Publishing the draft starts `publish.yml`, which
-copies the appcast to `docs/` of wanggang316/handbyte, which GitHub Pages
-serves as the Sparkle feed and the website download button, and updates the Homebrew cask. The contract CI enforces:
+An app release is **a release PR** from `release/vX.Y.Z` to `main`.
+Merging it starts `release-merge.yml`, which validates and tags the merged
+commit, calls `release.yml` to build, sign, notarize and create a draft,
+verifies all four assets, and publishes the release. It then calls
+`publish.yml` to update the website appcast and Homebrew cask.
+**Merging the release PR ships the release.**
+
+The contract CI enforces:
 
 > tag `vX.Y.Z` ⇔ `MARKETING_VERSION: "X.Y.Z"` in `project.yml` ⇔
 > `CHANGELOG.md` has `## [X.Y.Z] - YYYY-MM-DD` with entries.
@@ -25,7 +26,7 @@ Never push to `main` directly; every release change goes through a PR.
 ## Process
 
 Run steps 1–6 without stopping: they write only to a release branch and an
-open PR. After the user approves the merge in step 7, run steps 7–9 without
+open PR. After the user approves the merge in step 7, run steps 7–8 without
 stopping, up to the published release.
 
 ### 1. Pre-flight
@@ -102,8 +103,7 @@ Release X.Y.Z (build N): <bump> because <row of step 3>.
 
 <the new CHANGELOG section, verbatim>
 
-Merging this PR does not release. After the merge, tag the merged commit
-`vX.Y.Z` to start the release workflow.
+Merging this PR starts CI to tag, build, publish, and distribute the release.
 EOT
 ```
 
@@ -119,34 +119,26 @@ gh pr merge <PR> --rebase
 git push origin --delete release/vX.Y.Z
 ```
 
-### 8. Tag the merged commit
+### 8. Wait for automatic publication and distribution
+
+Find the `release-merge.yml` run for this merged PR and verify its
+`headSha` matches the PR merge commit before watching it:
 
 ```bash
-SHA=$(gh pr view <PR> --json mergeCommit --jq .mergeCommit.oid)
-git fetch origin
-git merge-base --is-ancestor "$SHA" origin/main
-git show "$SHA:project.yml" | grep 'MARKETING_VERSION: "X.Y.Z"'
-git tag -a vX.Y.Z -m "Handbyte X.Y.Z" "$SHA"
-git push origin vX.Y.Z                                   # starts release.yml
+gh pr view <PR> --json mergeCommit --jq .mergeCommit.oid
+gh run list --workflow=release-merge.yml --event=pull_request --limit 20 \
+  --json databaseId,headSha,status,conclusion,url
+gh run watch <RUN_ID> --exit-status
+gh release view vX.Y.Z --json isDraft,assets,url
 ```
 
-Always an annotated tag on the merged commit, never on the local branch commit.
-
-### 9. Wait for CI, then publish the release
-
-```bash
-RUN=$(gh run list --workflow=release.yml --branch vX.Y.Z --limit 1 --json databaseId --jq '.[0].databaseId')
-gh run watch "$RUN" --exit-status
-gh release view vX.Y.Z --json isDraft,assets --jq '{isDraft, assets: [.assets[].name]}'
-gh release edit vX.Y.Z --draft=false
-```
-
-Publish only when the run passed and the draft has all four assets:
-`Handbyte-X.Y.Z.dmg`, `Handbyte-X.Y.Z.dmg.sha256`, `Handbyte.dmg` and
-`appcast.xml`. Publish from this session, not from CI: a release that
-the workflow token publishes does not start `publish.yml`. Then confirm
-that run (`gh run list --workflow=publish.yml --limit 1`) and that
-<https://handbyte.gumpw.com/appcast.xml> carries the new build.
+Confirm the release is public and carries `Handbyte-X.Y.Z.dmg`,
+`Handbyte-X.Y.Z.dmg.sha256`, `Handbyte.dmg`, and `appcast.xml`.
+Confirm the `distribute` job passed, the website appcast at
+<https://handbyte.gumpw.com/appcast.xml> carries the new build, and
+`Casks/handbyte.rb` in `wanggang316/homebrew-tap` carries the new version.
+Do not manually tag or publish during the normal flow. CI calls the reusable
+workflows directly because `GITHUB_TOKEN` does not trigger downstream events.
 
 ## Recovery
 
@@ -155,9 +147,10 @@ user approval.
 
 | Symptom | Fix |
 |---|---|
-| CI: tag version ≠ `MARKETING_VERSION` | The tag is on the wrong commit: with approval, delete it and tag the merged bump commit. |
-| CI: no CHANGELOG section | Add it in a PR; then rerun the workflow with `workflow_dispatch` on the same tag. |
-| Notarization or another transient failure | `gh run view --log-failed`, then rerun with `workflow_dispatch` on the existing tag; the draft is updated in place. |
+| Merge validation fails | Fix the version or notes in a new release PR. Never move an existing release tag. |
+| Build, notarization, or distribution fails | Inspect `gh run view <RUN_ID> --log-failed`, fix the cause, then rerun failed jobs. An existing tag is accepted only at the same merge commit. |
+| Website or tap push returns 403 | Repair `PUBLISH_TOKEN` access: Contents read/write on both `wanggang316/handbyte` and `wanggang316/homebrew-tap`, then rerun the failed distribution job. |
+| Manual fallback is needed | Push the annotated tag on the merged commit, or dispatch `release.yml` with an existing tag. Verify the four assets, then publish the draft with a user token to trigger `publish.yml`. |
 | Published release is broken | Mark its heading `[YANKED]` with a one-line reason and ship the fix as the next version. |
 
 `docs/appcast.xml` in wanggang316/handbyte is written only by `publish.yml`;

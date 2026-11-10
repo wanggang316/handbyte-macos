@@ -4,8 +4,8 @@
 # scripts/release.sh signs with Developer ID, notarizes, builds the DMG
 # and writes the Sparkle appcast. The draft release carries
 # Handbyte-X.Y.Z.dmg, its .sha256, the stable-named Handbyte.dmg and
-# appcast.xml. Publishing the draft is a human step; publish.yml then
-# copies the appcast to GitHub Pages and updates the Homebrew cask.
+# appcast.xml. release-merge.yml publishes the draft and calls publish.yml.
+# For manual tag pushes, publish the draft separately to start publish.yml.
 #
 # Repository secrets (Settings > Secrets and variables > Actions). None are
 # created by automation; a human sets each one. The names match the codans
@@ -29,6 +29,12 @@
 name: release
 
 on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        type: string
   push:
     tags:
       - 'v*'
@@ -55,7 +61,7 @@ jobs:
       - name: Resolve tag and version
         id: meta
         env:
-          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
           TAG="${INPUT_TAG:-$GITHUB_REF_NAME}"
