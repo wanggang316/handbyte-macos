@@ -124,7 +124,7 @@ struct SmartCleanView: View {
                     Image(systemName: "lock").foregroundStyle(HB.Palette.textTertiary).frame(width: 18).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Old system logs").foregroundStyle(HB.Palette.text)
-                        Text(store.systemMessage ?? "Crash reports and rotated logs of macOS. They belong to the system, so macOS asks for your password.")
+                        Text(store.systemMessage ?? "Old crash reports and logs of macOS. They belong to the system, so macOS asks for your password.")
                             .font(.system(size: 11)).foregroundStyle(HB.Palette.textTertiary)
                     }
                     Spacer()
