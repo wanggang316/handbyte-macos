@@ -338,9 +338,9 @@ struct ProgressLine: View {
 
 /// One area of a cleanup: waiting, busy, done or idle, with a size.
 private struct AreaRow: View {
-    enum State { case waiting, busy, done, idle }
+    enum Phase { case waiting, busy, done, idle }
 
-    let state: State
+    let state: Phase
     let title: String
     let detail: String?
     let size: String?
