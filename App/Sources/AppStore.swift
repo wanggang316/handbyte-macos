@@ -406,6 +406,31 @@ final class AppStore {
         phase = .report(CleanReport(outcomes: outcomes))
     }
 
+    // MARK: History
+
+    private(set) var history = HistoryList(entries: [])
+    private(set) var historyError: String?
+
+    func reloadHistory() {
+        do {
+            history = HistoryList(entries: try OperationsJournal(fileURL: journalURL).entries())
+            historyError = nil
+        } catch {
+            historyError = "The operations log could not be read: \(error.localizedDescription)"
+        }
+    }
+
+    func restore(_ item: HistoryList.Item) {
+        let journal = OperationsJournal(fileURL: journalURL)
+        do {
+            try Restorer().restore(item.entry, journal: journal)
+            historyError = nil
+        } catch {
+            historyError = "\(URL(filePath: item.entry.path).lastPathComponent): \(error.description)"
+        }
+        reloadHistory()
+    }
+
     // MARK: Finder
 
     func reveal(_ candidate: Candidate) {
