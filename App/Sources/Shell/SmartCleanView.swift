@@ -31,7 +31,7 @@ struct SmartCleanView: View {
             .padding(.bottom, 32)
             .frame(maxWidth: .infinity)
         }
-        .animation(HB.Motion.standard, value: phaseKey)
+        .hbAnimation(HB.Motion.standard, value: phaseKey)
     }
 
     private var phaseKey: Int {
@@ -159,7 +159,7 @@ struct SmartCleanView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(HB.Palette.textTertiary)
             }
-            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            .hbTransition(.opacity.combined(with: .scale(scale: 0.98)))
         }
     }
 
@@ -250,7 +250,7 @@ struct SmartCleanView: View {
                         .buttonStyle(LinkButtonStyle())
                 }
             }
-            .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            .hbTransition(.opacity.combined(with: .scale(scale: 0.98)))
         }
     }
 }
@@ -279,7 +279,7 @@ private struct Hero: View {
                     .font(HB.Typography.title)
                     .foregroundStyle(HB.Palette.textSecondary))
                     .monospacedDigit()
-                    .contentTransition(.numericText())
+                    .hbNumericTransition()
                     .multilineTextAlignment(.center)
             } else {
                 Text(label)
@@ -302,7 +302,8 @@ private struct LiveDot: View {
         Circle()
             .fill(live ? HB.Palette.brand : HB.Palette.borderStrong)
             .frame(width: 8, height: 8)
-            .opacity(live && pulse ? 0.35 : 1)
+            .opacity(live && pulse && !reduceMotion ? 0.35 : 1)
+            .accessibilityHidden(true)
             .onAppear {
                 guard live, !reduceMotion else { return }
                 withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) { pulse = true }
@@ -324,7 +325,7 @@ struct ProgressLine: View {
             }
         }
         .frame(height: 3)
-        .animation(HB.Motion.standard, value: fraction)
+        .hbAnimation(HB.Motion.standard, value: fraction)
         .accessibilityElement()
         .accessibilityLabel("Progress")
         .accessibilityValue("\(Int((fraction * 100).rounded())) percent")
@@ -379,7 +380,7 @@ private struct AreaRow: View {
         .background(hovering ? HB.Palette.hover : .clear, in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
         .overlay(alignment: .bottom) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
         .onHover { hovering = $0 }
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
         .accessibilityElement(children: .combine)
     }
 }

@@ -313,7 +313,7 @@ private struct TreemapCell: View {
         .onHover { hovering = $0 }
         .gesture(TapGesture(count: 2).onEnded { store.open(row) })
         .simultaneousGesture(TapGesture().onEnded { store.selectedRowID = row.id })
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
         .help("\(row.title) · \(ByteFormat.string(row.allocatedBytes))")
         .accessibilityElement()
         .accessibilityLabel("\(row.title), \(ByteFormat.string(row.allocatedBytes))")
@@ -361,7 +361,7 @@ private struct CollectorBar: View {
             .background(HB.Palette.surface, in: RoundedRectangle(cornerRadius: HB.Radius.medium, style: .continuous))
             .padding(.horizontal, HB.Space.page)
             .padding(.bottom, 12)
-            .transition(.move(edge: .top).combined(with: .opacity))
+            .hbTransition(.move(edge: .top).combined(with: .opacity))
         }
     }
 }
@@ -551,7 +551,7 @@ private struct StorageListRow: View {
         .onHover { hovering = $0 }
         .gesture(TapGesture(count: 2).onEnded { store.open(row) })
         .simultaneousGesture(TapGesture().onEnded { store.selectedRowID = row.id })
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -638,6 +638,6 @@ private struct LargestFileRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .gesture(TapGesture(count: 2).onEnded { store.reveal(file.path) })
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
     }
 }
