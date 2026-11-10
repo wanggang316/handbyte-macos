@@ -20,7 +20,9 @@ public struct CleanupHints: Sendable {
             if let other = table[path], !rule.isMoreSpecific(than: other) { return }
             table[path] = rule
         }
-        for rule in rules {
+        // A rule of the caution tier gives no hint: it holds user data, and
+        // the view must not call it cleanable.
+        for rule in rules where rule.safety != .caution {
             if let name = rule.directoryName {
                 artifacts[name] = artifacts[name] ?? rule
             } else if let location = rule.location(in: home)?.path(percentEncoded: false) {

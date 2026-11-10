@@ -30,6 +30,8 @@ struct CleanupHintTests {
 
     @Test func otherFoldersAreNotCovered() {
         #expect(hints.rule(for: "/Users/alice/Documents") == nil)
+        #expect(hints.rule(for: "/Users/alice/Downloads") == nil)
+        #expect(hints.rule(for: "/Users/alice/Library/Developer/Xcode/Archives") == nil)
         #expect(hints.rule(for: "/Users/alice/Library") == nil)
         #expect(hints.rule(for: "/Users/alice/Library/Caches/go-build/00") == nil)
     }
