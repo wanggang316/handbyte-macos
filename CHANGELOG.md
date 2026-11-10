@@ -26,6 +26,11 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   Media, Caches and logs, Other) and keeps the last result. The next scan
   shows the last sizes until each folder is measured again, and the
   Overview splits the used space by these categories.
+- Storage can pick files and folders for the Trash. The picked items are
+  reviewed in one sheet and moved to the Trash; each move is recorded in
+  the operations log. Standard folders, private data such as
+  `~/Library/Keychains`, excluded paths and symbolic links cannot be picked,
+  and a folder that a cleanup rule covers points to Clean.
 
 ### Changed
 

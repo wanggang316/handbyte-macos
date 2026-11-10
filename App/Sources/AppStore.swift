@@ -88,6 +88,7 @@ final class AppStore {
         }
         updateStorageHints()
         storage.openClean = { [weak self] in self?.openCleanFromStorage() }
+        storage.journalURL = journalURL
     }
 
     /// AppSettings plus the launch overrides, which win when set.
@@ -166,6 +167,7 @@ final class AppStore {
         let configuration = configuration
         storage.hints = CleanupHints(rules: configuration.rules, home: home, projectRoots: configuration.projectRoots)
         storage.projectRoots = configuration.projectRoots
+        storage.collectPolicy = CollectPolicy(home: home, exclusions: settings.exclusions.filter { $0.hasPrefix("/") })
     }
 
     /// From a folder of Storage that a rule covers: show Clean, and scan

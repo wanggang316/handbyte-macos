@@ -141,6 +141,7 @@ private struct StorageResultView: View {
         @Bindable var store = store
         VStack(spacing: 0) {
             header(mode: $store.mode)
+            CollectorBar()
             if store.mode == .folders, let browser = store.browser {
                 if browser.trail.isEmpty, !store.categories.isEmpty {
                     CategoryMeter(
@@ -161,6 +162,9 @@ private struct StorageResultView: View {
             } else {
                 LargestFilesList(result: result)
             }
+        }
+        .sheet(isPresented: $store.isReviewingCollection, onDismiss: store.closeCollection) {
+            CollectionReview()
         }
     }
 
@@ -202,7 +206,13 @@ private struct StorageResultView: View {
 
     private var footer: some View {
         HStack(spacing: 12) {
-            if let row = store.selectedRow {
+            if let notice = store.notice {
+                Label(notice, systemImage: "exclamationmark.circle")
+                    .font(HB.Typography.body)
+                    .foregroundStyle(HB.Palette.review)
+                    .lineLimit(1)
+                Spacer()
+            } else if let row = store.selectedRow {
                 if let rule = store.rule(for: row) {
                     CleanupTag()
                         .help(rule.summary + " " + rule.recovery)
@@ -222,6 +232,12 @@ private struct StorageResultView: View {
                 }
                 if let path = row.path {
                     Button("Show in Finder") { store.reveal(path) }
+                    if store.rule(for: row) == nil {
+                        Button(store.isCollected(path) ? "Remove from Trash list" : "Add to Trash list") {
+                            store.toggleCollect(path: path, size: row.allocatedBytes)
+                        }
+                        .help(store.collectRefusal(path) ?? "Pick this item to move it to the Trash after a review")
+                    }
                 }
             } else {
                 Spacer()
@@ -311,6 +327,150 @@ private struct TreemapCell: View {
     }
 }
 
+/// Marks an item on the Trash list.
+private struct PickedTag: View {
+    var body: some View {
+        Image(systemName: "trash.fill")
+            .font(.system(size: 9))
+            .foregroundStyle(HB.Palette.review)
+            .accessibilityLabel("On the Trash list")
+    }
+}
+
+/// The items picked for the Trash: a count, the size and the review.
+private struct CollectorBar: View {
+    @Environment(StorageStore.self) private var store
+
+    var body: some View {
+        if !store.collected.isEmpty {
+            HStack(spacing: 12) {
+                Image(systemName: "trash")
+                    .foregroundStyle(HB.Palette.review)
+                Text("\(store.collected.count) \(store.collected.count == 1 ? "item" : "items") · \(ByteFormat.string(store.collectedBytes)) picked for the Trash")
+                    .font(HB.Typography.body)
+                    .monospacedDigit()
+                    .foregroundStyle(HB.Palette.text)
+                Spacer()
+                Button("Clear", action: store.clearCollected)
+                    .buttonStyle(LinkButtonStyle())
+                Button("Review") { store.isReviewingCollection = true }
+                    .keyboardShortcut(.defaultAction)
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 40)
+            .background(HB.Palette.surface, in: RoundedRectangle(cornerRadius: HB.Radius.medium, style: .continuous))
+            .padding(.horizontal, HB.Space.page)
+            .padding(.bottom, 12)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+    }
+}
+
+/// The review of the picked items, then the result of the move.
+private struct CollectionReview: View {
+    @Environment(StorageStore.self) private var store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let outcomes = store.collectOutcomes {
+                result(outcomes)
+            } else {
+                review
+            }
+        }
+        .padding(24)
+        .frame(width: 560)
+        .frame(minHeight: 320)
+        .background(HB.Palette.background)
+    }
+
+    private var review: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Move \(ByteFormat.string(store.collectedBytes)) to the Trash?")
+                    .font(HB.Typography.title)
+                    .foregroundStyle(HB.Palette.text)
+                Text("These items go to the Trash. You can put them back from the Trash until you empty it.")
+                    .font(HB.Typography.body)
+                    .foregroundStyle(HB.Palette.textSecondary)
+            }
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(store.collected) { item in
+                        HStack(spacing: 10) {
+                            Image(systemName: item.isDirectory ? "folder" : "doc")
+                                .foregroundStyle(HB.Palette.textTertiary)
+                            Text(item.url.fileSystemPath.replacingOccurrences(of: store.root.fileSystemPath, with: "~"))
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .foregroundStyle(HB.Palette.text)
+                            Spacer()
+                            Text(ByteFormat.string(item.size))
+                                .monospacedDigit()
+                                .foregroundStyle(HB.Palette.textSecondary)
+                            Button("Remove", systemImage: "xmark") { store.removeCollected(item) }
+                                .labelStyle(.iconOnly)
+                                .buttonStyle(.borderless)
+                                .help("Remove from the list")
+                        }
+                        .font(HB.Typography.body)
+                        .frame(height: 34)
+                        .overlay(alignment: .bottom) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
+                    }
+                }
+            }
+            .frame(maxHeight: 260)
+            HStack {
+                Spacer()
+                Button("Cancel") { store.isReviewingCollection = false }
+                    .keyboardShortcut(.cancelAction)
+                Button(store.isMovingCollection ? "Moving…" : "Move to Trash", action: store.moveCollected)
+                    .buttonStyle(PillButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(store.isMovingCollection || store.collected.isEmpty)
+            }
+        }
+    }
+
+    private func result(_ outcomes: [Collector.Outcome]) -> some View {
+        let moved = outcomes.filter { if case .moved = $0.status { true } else { false } }
+        return VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Moved \(moved.count) to the Trash · \(ByteFormat.string(moved.reduce(0) { $0 + $1.item.size }))", systemImage: "checkmark.circle.fill")
+                    .font(HB.Typography.title)
+                    .foregroundStyle(HB.Palette.text)
+                Text("Empty the Trash in Finder to free the space. To put an item back, use Put Back in the Trash.")
+                    .font(HB.Typography.body)
+                    .foregroundStyle(HB.Palette.textSecondary)
+            }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(outcomes, id: \.item) { outcome in
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            switch outcome.status {
+                            case .moved:
+                                Image(systemName: "checkmark").foregroundStyle(HB.Palette.safe)
+                                Text(outcome.item.url.lastPathComponent).foregroundStyle(HB.Palette.text)
+                            case .skipped(let reason), .failed(let reason):
+                                Image(systemName: "exclamationmark.circle").foregroundStyle(HB.Palette.review)
+                                Text("\(outcome.item.url.lastPathComponent): \(reason)").foregroundStyle(HB.Palette.textSecondary)
+                            }
+                        }
+                        .font(HB.Typography.body)
+                    }
+                }
+            }
+            .frame(maxHeight: 220)
+            HStack {
+                Spacer()
+                Button("Done", action: store.closeCollection)
+                    .buttonStyle(PillButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+}
+
 /// Marks a folder that a cleanup rule covers.
 private struct CleanupTag: View {
     var body: some View {
@@ -359,6 +519,9 @@ private struct StorageListRow: View {
                     .foregroundStyle(row.note == nil ? HB.Palette.text : HB.Palette.textTertiary)
                 if store.rule(for: row) != nil {
                     CleanupTag()
+                }
+                if let path = row.path, store.isCollected(path) {
+                    PickedTag()
                 }
                 Spacer(minLength: 8)
                 Text(row.note ?? ((row.incomplete ? "≥ " : "") + ByteFormat.string(row.allocatedBytes)))
@@ -453,6 +616,14 @@ private struct LargestFileRow: View {
                 .buttonStyle(LinkButtonStyle())
                 .opacity(hovering ? 1 : 0)
                 .accessibilityHidden(!hovering)
+            let picked = store.isCollected(file.path)
+            Button(picked ? "Remove from Trash list" : "Add to Trash list") {
+                store.toggleCollect(path: file.path, size: file.allocatedBytes)
+            }
+            .buttonStyle(LinkButtonStyle())
+            .opacity(hovering || picked ? 1 : 0)
+            .accessibilityHidden(!hovering && !picked)
+            .help(store.collectRefusal(file.path) ?? "Pick this file to move it to the Trash after a review")
             Text(ByteFormat.string(file.allocatedBytes))
                 .monospacedDigit()
                 .fontWeight(.medium)
