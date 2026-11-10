@@ -62,3 +62,30 @@ struct OverviewTests {
         #expect(summary.primaryAction == .scan)
     }
 }
+
+@Suite("Volume breakdown")
+struct VolumeBreakdownTests {
+    let volume = VolumeUsage(totalBytes: 500, availableBytes: 200)
+
+    @Test func withoutAResultTheUsedSpaceIsOnePart() {
+        let parts = VolumeBreakdown.parts(volume: volume, home: nil)
+        #expect(parts == [.init(id: "other", title: "Used", bytes: 300)])
+    }
+
+    @Test func theHomeCategoriesComeFirstAndTheRestIsOnePart() {
+        let home = UsageSummary(path: "/Users/alice", scannedAt: .now, allocatedBytes: 150, categories: [
+            CategoryTotal(id: "developer", allocatedBytes: 90, logicalBytes: 0),
+            CategoryTotal(id: "media", allocatedBytes: 40, logicalBytes: 0),
+            CategoryTotal(id: "other", allocatedBytes: 20, logicalBytes: 0),
+        ])
+        let parts = VolumeBreakdown.parts(volume: volume, home: home)
+        #expect(parts.map(\.id) == ["developer", "media", "other"])
+        #expect(parts.map(\.title) == ["Developer", "Media", "System and other"])
+        #expect(parts.map(\.bytes) == [90, 40, 170])
+    }
+
+    @Test func aHomeLargerThanTheUsedSpaceLeavesNoRest() {
+        let home = UsageSummary(path: "/", scannedAt: .now, categories: [CategoryTotal(id: "media", allocatedBytes: 400, logicalBytes: 0)])
+        #expect(VolumeBreakdown.parts(volume: volume, home: home).map(\.id) == ["media"])
+    }
+}

@@ -99,18 +99,16 @@ struct OverviewView: View {
                 .foregroundStyle(HB.Palette.textTertiary))
                 .font(HB.Typography.body)
                 .monospacedDigit()
-            GeometryReader { proxy in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(HB.Palette.surfaceHover)
-                    Capsule()
-                        .fill(HB.Palette.textTertiary)
-                        .frame(width: max(8, proxy.size.width * volume.usedFraction))
-                }
+            let summary = store.storage.lastSummary
+            CategoryMeter(
+                parts: VolumeBreakdown.parts(volume: volume, home: summary).map { .init(id: $0.id, title: $0.title, bytes: $0.bytes) },
+                total: volume.totalBytes,
+                showsLegend: summary != nil
+            )
+            if summary == nil {
+                Button("Open Storage to see what fills the disk") { store.section = .storage }
+                    .buttonStyle(LinkButtonStyle())
             }
-            .frame(height: 8)
-            .accessibilityElement()
-            .accessibilityLabel("Storage used")
-            .accessibilityValue("\(Int((volume.usedFraction * 100).rounded())) percent")
         }
     }
 
@@ -131,8 +129,10 @@ struct OverviewView: View {
             }
             Card(label: "Storage", action: { store.section = .storage }) {
                 cardBody(
-                    value: store.volume.map { "\(ByteFormat.string($0.usedBytes)) used" } ?? "Planned",
-                    text: "See what fills your home folder, folder by folder."
+                    value: store.storage.lastSummary.map { "\(ByteFormat.string($0.allocatedBytes)) in home" }
+                        ?? store.volume.map { "\(ByteFormat.string($0.usedBytes)) used" } ?? "Storage",
+                    text: store.storage.lastSummary.map { "Measured \($0.scannedAt.formatted(.relative(presentation: .named)))." }
+                        ?? "See what fills your home folder, folder by folder."
                 )
             }
         }

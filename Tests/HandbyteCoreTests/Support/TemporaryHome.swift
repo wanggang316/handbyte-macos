@@ -1,4 +1,5 @@
 import Foundation
+@testable import HandbyteCore
 
 /// A throwaway home directory under the system temporary directory. Tests
 /// build fixtures with the helpers below and never touch real user data.
@@ -13,8 +14,9 @@ final class TemporaryHome: @unchecked Sendable {
             .appending(path: UUID().uuidString, directoryHint: .isDirectory)
         try fileManager.createDirectory(at: base, withIntermediateDirectories: true)
         // Resolve /var -> /private/var once so fixture paths compare equal to
-        // the paths the walker reports.
-        url = base.resolvingSymlinksInPath()
+        // the paths the walker reports. realpath keeps the /private prefix,
+        // which `resolvingSymlinksInPath` removes again.
+        url = UsageScanner.physicalPath(base).map { URL(filePath: $0, directoryHint: .isDirectory) } ?? base
     }
 
     deinit {

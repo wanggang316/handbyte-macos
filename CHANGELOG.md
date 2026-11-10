@@ -22,6 +22,10 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   then a treemap and a list of the opened folder, and the largest files.
   It is read-only. A folder that a cleanup rule covers is marked, and
   "Review in Clean" opens Clean.
+- Storage sums the home folder by categories (Apps, Developer, Documents,
+  Media, Caches and logs, Other) and keeps the last result. The next scan
+  shows the last sizes until each folder is measured again, and the
+  Overview splits the used space by these categories.
 
 ### Changed
 

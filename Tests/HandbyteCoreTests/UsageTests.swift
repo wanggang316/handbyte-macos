@@ -147,6 +147,16 @@ struct UsageTests {
         #expect(topBytes == result.root.allocatedBytes)
     }
 
+    @Test func thePathOfTheResultKeepsThePrivatePrefix() async throws {
+        let home = try TemporaryHome()
+        defer { home.cleanUp() }
+        #expect(home.url.path.hasPrefix("/private/"))
+        let alias = URL(filePath: String(home.url.path.dropFirst("/private".count)), directoryHint: .isDirectory)
+        let result = try #require(await UsageScanner().scan(alias))
+        #expect(result.path == home.url.path(percentEncoded: false).replacing(/\/$/, with: ""))
+        #expect(UsageScanner.physicalPath(URL(filePath: "/var")) == "/private/var")
+    }
+
     @Test func aFileIsNotATree() async throws {
         let home = try TemporaryHome()
         defer { home.cleanUp() }

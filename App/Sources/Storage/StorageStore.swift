@@ -23,6 +23,10 @@ final class StorageStore {
     }
 
     private(set) var phase: Phase = .idle
+    /// The last complete scan of the root, from this run or an earlier one.
+    private(set) var lastSummary: UsageSummary?
+    /// Categories of the scan on screen, largest first.
+    private(set) var categories: [CategoryTotal] = []
     private(set) var browser: StorageBrowser?
     private(set) var startedAt = Date()
     var mode: Mode = .folders
@@ -38,8 +42,19 @@ final class StorageStore {
     private let scanner = UsageScanner()
     private var task: Task<Void, Never>?
 
-    init(root: URL) {
+    /// The project roots belong to the Developer category. The app store
+    /// keeps them in step with the settings.
+    var projectRoots: [String] = []
+    private let summaries: UsageSummaryStore
+
+    init(root: URL, summaries: UsageSummaryStore) {
         self.root = root
+        self.summaries = summaries
+        lastSummary = summaries.load(path: Self.physical(root))
+    }
+
+    private static func physical(_ url: URL) -> String {
+        UsageScanner.physicalPath(url) ?? url.path(percentEncoded: false)
     }
 
     var isScanning: Bool {
@@ -92,6 +107,16 @@ final class StorageStore {
         }
         browser = StorageBrowser(rootPath: result.path, root: result.root)
         selectedRowID = browser?.rows.first?.id
+        categories = UsageCategories.totals(
+            of: result,
+            paths: StorageCatalog.shared.paths(home: URL(filePath: Self.physical(root)), projectRoots: projectRoots)
+        )
+        if !result.cancelled {
+            let summary = UsageSummary(result: result, categories: categories, at: Date())
+            lastSummary = summary
+            // A failed write only costs the instant result of the next run.
+            try? summaries.save(summary)
+        }
         phase = .ready(result)
     }
 
