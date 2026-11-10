@@ -25,6 +25,7 @@ struct HandbyteApp: App {
         WindowGroup {
             ContentView()
                 .environment(store)
+                .environment(store.storage)
         }
         // The toolbar holds the mark and the section tabs; the title would
         // repeat the name.

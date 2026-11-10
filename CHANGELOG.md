@@ -17,7 +17,10 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 - An Overview screen with the free space, one main action and the result of
   the last scan.
 - A top bar with the sections Overview, Clean, Apps, Storage and History.
-  Apps, Storage and History are planned and show a short description.
+  Apps and History are planned and show a short description.
+- A Storage section: a scan of the home folder that shows running totals,
+  then a treemap and a list of the opened folder, and the largest files.
+  It is read-only.
 
 ### Changed
 

@@ -14,7 +14,9 @@ struct ContentView: View {
                 OverviewView()
             case .clean:
                 cleanFlow
-            case .apps, .storage, .history:
+            case .storage:
+                StorageView()
+            case .apps, .history:
                 PlannedView(section: store.section)
             }
         }
