@@ -252,6 +252,12 @@ public struct AppFile: Sendable, Hashable, Identifiable {
 /// Finds the files of an app and the data of apps that are gone, by the
 /// rules of the app catalog. The same rules as `internal/apps` of the Go CLI;
 /// the conformance cases keep them equal.
+private extension String {
+    func trimmingSuffix(_ suffix: String) -> String {
+        hasSuffix(suffix) && count > suffix.count ? String(dropLast(suffix.count)) : self
+    }
+}
+
 public enum AppFiles {
     static func isValidBundleID(_ id: String) -> Bool {
         id.count >= 5 && id.wholeMatch(of: /^[A-Za-z0-9][A-Za-z0-9-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)+$/) != nil
@@ -312,7 +318,7 @@ public enum AppFiles {
 
         matchLocations(catalog.locations, expand: { PathTemplate.expand($0, home: home).fileSystemPath }, target: target, add: add)
         for folder in catalog.launchdFolders where folder.hasPrefix("~/") {
-            for path in launchdNaming(PathTemplate.expand(folder, home: home).fileSystemPath, bundle: target.bundle) {
+            for path in launchdOwned(PathTemplate.expand(folder, home: home).fileSystemPath, target: target, root: "").lists {
                 add(path, "state", .high)
             }
         }
@@ -344,7 +350,8 @@ public enum AppFiles {
         }
         matchLocations(catalog.systemLocations, expand: { base + $0 }, target: target, add: add)
         for folder in catalog.launchdFolders where folder.hasPrefix("/") {
-            for path in launchdNaming(base + folder, bundle: target.bundle) { add(path, "state", .high) }
+            let owned = launchdOwned(base + folder, target: target, root: base)
+            for path in owned.lists + owned.helpers { add(path, "state", .high) }
         }
         return found.values.sorted { $0.url.fileSystemPath.utf8.lexicographicallyPrecedes($1.url.fileSystemPath.utf8) }
     }
@@ -379,21 +386,36 @@ public enum AppFiles {
         }
     }
 
-    /// The property lists in `folder` that name a path inside `bundle`. The
-    /// path is plain text in XML and binary property lists.
-    static func launchdNaming(_ folder: String, bundle: String?) -> [String] {
-        guard let bundle, bundle.hasSuffix(".app"),
-              let names = try? FileManager.default.contentsOfDirectory(atPath: folder)
-        else { return [] }
-        let needle = Data((bundle + "/").utf8)
-        return names.filter { $0.hasSuffix(".plist") }.map { folder + "/" + $0 }.filter { path in
+    /// The property lists in `folder` that belong to the app: they name its
+    /// bundle ID in AssociatedBundleIdentifiers, or their program is inside
+    /// the bundle. `helpers` are the programs of those lists in
+    /// /Library/PrivilegedHelperTools, below `root`.
+    static func launchdOwned(_ folder: String, target: Target, root: String) -> (lists: [String], helpers: [String]) {
+        guard let names = try? FileManager.default.contentsOfDirectory(atPath: folder) else { return ([], []) }
+        var lists: [String] = []
+        var helpers: [String] = []
+        for name in names.sorted() where name.hasSuffix(".plist") {
+            let path = folder + "/" + name
             guard let status = FileStatus(lstatPath: path), !status.isDirectory, !status.isSymbolicLink,
-                  let handle = FileHandle(forReadingAtPath: path)
-            else { return false }
-            defer { try? handle.close() }
-            let data = (try? handle.read(upToCount: 256 << 10)) ?? Data()
-            return data.range(of: needle) != nil
+                  let data = FileManager.default.contents(atPath: path),
+                  let job = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
+            else { continue }
+            let program = job["Program"] as? String ?? (job["ProgramArguments"] as? [Any])?.first as? String ?? ""
+            var owned = false
+            if let bundle = target.bundle, bundle.hasSuffix(".app"), program.hasPrefix(bundle + "/") { owned = true }
+            let associated = job["AssociatedBundleIdentifiers"].map { ($0 as? [Any])?.compactMap { $0 as? String } ?? [$0 as? String].compactMap { $0 } } ?? []
+            if isValidBundleID(target.bundleID), associated.contains(where: { $0.caseInsensitiveCompare(target.bundleID) == .orderedSame }) {
+                owned = true
+            }
+            guard owned else { continue }
+            lists.append(path)
+            let programURL = URL(filePath: program)
+            if programURL.deletingLastPathComponent().path(percentEncoded: false).trimmingSuffix("/") == "/Library/PrivilegedHelperTools",
+               !programURL.lastPathComponent.isEmpty {
+                helpers.append(root + program)
+            }
         }
+        return (lists, helpers)
     }
 
     static func matchSegment(_ template: String, _ placeholder: String, _ value: String) -> [String] {
