@@ -177,6 +177,7 @@ private struct StorageResultView: View {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(HB.Palette.textTertiary)
+                                .accessibilityHidden(true)
                         }
                         NavPill(title: crumb.title, isCurrent: crumb.depth == browser.trail.count) {
                             store.mode = .folders
@@ -272,8 +273,11 @@ private struct TreemapView: View {
                 }
             }
         }
-        .accessibilityElement(children: .contain)
+        // The side list has the same rows as buttons, so VoiceOver reads
+        // the treemap as one summary and does not visit each cell.
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel("Folder sizes")
+        .accessibilityValue(rows.prefix(3).map { "\($0.title) \(ByteFormat.string($0.allocatedBytes))" }.joined(separator: ", "))
     }
 }
 
@@ -315,9 +319,6 @@ private struct TreemapCell: View {
         .simultaneousGesture(TapGesture().onEnded { store.selectedRowID = row.id })
         .hbAnimation(HB.Motion.quick, value: hovering)
         .help("\(row.title) · \(ByteFormat.string(row.allocatedBytes))")
-        .accessibilityElement()
-        .accessibilityLabel("\(row.title), \(ByteFormat.string(row.allocatedBytes))")
-        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
     /// Folders are darker than files, so that the eye finds what can open.
@@ -346,6 +347,7 @@ private struct CollectorBar: View {
             HStack(spacing: 12) {
                 Image(systemName: "trash")
                     .foregroundStyle(HB.Palette.review)
+                    .accessibilityHidden(true)
                 Text("\(store.collected.count) \(store.collected.count == 1 ? "item" : "items") · \(ByteFormat.string(store.collectedBytes)) picked for the Trash")
                     .font(HB.Typography.body)
                     .monospacedDigit()
@@ -490,6 +492,7 @@ private struct StorageList: View {
     @Environment(StorageStore.self) private var store
 
     var body: some View {
+        @Bindable var store = store
         ScrollView {
             LazyVStack(spacing: 2) {
                 ForEach(rows) { row in
@@ -497,6 +500,15 @@ private struct StorageList: View {
                 }
             }
         }
+        .keyboardSelection(
+            rows.map(\.id),
+            selection: $store.selectedRowID,
+            open: { id in rows.first { $0.id == id }.map(store.open) },
+            back: {
+                guard let depth = store.browser?.trail.count, depth > 0 else { return }
+                store.leave(to: depth - 1)
+            }
+        )
     }
 }
 
@@ -531,6 +543,7 @@ private struct StorageListRow: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 9, weight: .semibold))
                         .foregroundStyle(hovering ? HB.Palette.text : HB.Palette.textTertiary)
+                        .accessibilityHidden(true)
                 }
             }
             .font(HB.Typography.body)
@@ -553,7 +566,14 @@ private struct StorageListRow: View {
         .simultaneousGesture(TapGesture().onEnded { store.selectedRowID = row.id })
         .hbAnimation(HB.Motion.quick, value: hovering)
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .accessibilityValue("\(Int((row.share * 100).rounded())) percent of the folder")
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { store.selectedRowID = row.id }
+        .accessibilityActions {
+            if row.canOpen {
+                Button("Open") { store.open(row) }
+            }
+        }
     }
 
     private var background: Color {
@@ -593,8 +613,10 @@ private struct LargestFileRow: View {
     let rootPath: String
     @Environment(StorageStore.self) private var store
     @State private var hovering = false
+    @FocusState private var focusedAction: Int?
 
     var body: some View {
+        let shown = hovering || focusedAction != nil
         let relative = file.path.hasPrefix(rootPath + "/") ? String(file.path.dropFirst(rootPath.count + 1)) : file.path
         let name = URL(filePath: file.path).lastPathComponent
         HStack(spacing: 12) {
@@ -614,15 +636,15 @@ private struct LargestFileRow: View {
             // keyboard focus, so that the list stays quiet.
             Button("Show in Finder") { store.reveal(file.path) }
                 .buttonStyle(LinkButtonStyle())
-                .opacity(hovering ? 1 : 0)
-                .accessibilityHidden(!hovering)
+                .opacity(shown ? 1 : 0)
+                .focused($focusedAction, equals: 0)
             let picked = store.isCollected(file.path)
             Button(picked ? "Remove from Trash list" : "Add to Trash list") {
                 store.toggleCollect(path: file.path, size: file.allocatedBytes)
             }
             .buttonStyle(LinkButtonStyle())
-            .opacity(hovering || picked ? 1 : 0)
-            .accessibilityHidden(!hovering && !picked)
+            .opacity(shown || picked ? 1 : 0)
+            .focused($focusedAction, equals: 1)
             .help(store.collectRefusal(file.path) ?? "Pick this file to move it to the Trash after a review")
             Text(ByteFormat.string(file.allocatedBytes))
                 .monospacedDigit()
@@ -639,5 +661,6 @@ private struct LargestFileRow: View {
         .onHover { hovering = $0 }
         .gesture(TapGesture(count: 2).onEnded { store.reveal(file.path) })
         .hbAnimation(HB.Motion.quick, value: hovering)
+        .accessibilityElement(children: .combine)
     }
 }

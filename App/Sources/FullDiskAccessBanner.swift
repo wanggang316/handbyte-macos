@@ -11,6 +11,7 @@ struct FullDiskAccessBanner: View {
             HStack(spacing: 12) {
                 Image(systemName: "lock.shield.fill")
                     .foregroundStyle(.orange)
+                    .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Full Disk Access is off")
                         .font(.headline)

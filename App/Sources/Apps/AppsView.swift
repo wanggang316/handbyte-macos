@@ -62,7 +62,7 @@ struct AppsView: View {
             Spacer()
             PillSegments(options: AppsBrowser.Filter.allCases.map { ($0, $0.rawValue) }, selection: filter)
             HStack(spacing: 6) {
-                Image(systemName: "magnifyingglass").foregroundStyle(HB.Palette.textTertiary)
+                Image(systemName: "magnifyingglass").foregroundStyle(HB.Palette.textTertiary).accessibilityHidden(true)
                 TextField("Search", text: query)
                     .textFieldStyle(.plain)
                     .frame(width: 130)
@@ -92,6 +92,7 @@ private struct AppList: View {
     @Environment(AppsStore.self) private var store
 
     var body: some View {
+        @Bindable var store = store
         let rows = store.browser.rows(now: .now)
         ScrollView {
             LazyVStack(spacing: 1) {
@@ -107,6 +108,7 @@ private struct AppList: View {
             }
             .padding(10)
         }
+        .keyboardSelection(rows.map(\.id), selection: $store.selectedAppID)
         .frame(maxWidth: .infinity)
     }
 }
@@ -125,9 +127,11 @@ private struct AppRow: View {
                     Text(app.name).foregroundStyle(HB.Palette.text).lineLimit(1)
                     if app.isRunning {
                         Circle().fill(HB.Palette.brand).frame(width: 6, height: 6).help("Running")
+                            .accessibilityElement().accessibilityLabel("Running")
                     }
                     if app.isSystem {
                         Image(systemName: "lock.fill").font(.system(size: 9)).foregroundStyle(HB.Palette.textTertiary).help("Part of macOS")
+                            .accessibilityLabel("Part of macOS")
                     }
                 }
                 Text([app.version.map { "Version \($0)" }, app.source.rawValue].compactMap { $0 }.joined(separator: " · "))
@@ -164,6 +168,7 @@ private struct AppRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { store.selectedAppID = app.id }
     }
 }
 
@@ -321,7 +326,19 @@ private struct LeftoverList: View {
             }
             .padding(10)
         }
+        .keyboardSelection(store.leftovers.map(\.id), selection: Binding(
+            get: { store.selectedLeftoverID },
+            set: { store.select(leftover: $0) }
+        ))
         .frame(maxWidth: .infinity)
+    }
+}
+
+private extension AppsStore {
+    /// A new leftover starts with nothing chosen.
+    func select(leftover id: LeftoverGroup.ID?) {
+        selectedLeftoverID = id
+        leftoverChoices = []
     }
 }
 
@@ -333,7 +350,7 @@ private struct LeftoverRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "shippingbox").foregroundStyle(HB.Palette.textTertiary).frame(width: 28)
+            Image(systemName: "shippingbox").foregroundStyle(HB.Palette.textTertiary).frame(width: 28).accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(group.bundleID).foregroundStyle(HB.Palette.text).lineLimit(1).truncationMode(.middle)
                 Text(group.items.count == 1 ? "1 item" : "\(group.items.count) items")
@@ -349,11 +366,10 @@ private struct LeftoverRow: View {
                     in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .onTapGesture {
-            store.selectedLeftoverID = group.id
-            store.leftoverChoices = []
-        }
+        .onTapGesture { store.select(leftover: group.id) }
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { store.select(leftover: group.id) }
     }
 }
 
@@ -459,6 +475,7 @@ private struct RemovalSheet: View {
                     Button("Cancel") { store.reviewing = nil }.keyboardShortcut(.cancelAction)
                     Button(store.isRemoving ? "Moving…" : "Move to Trash", action: store.confirm)
                         .buttonStyle(PillButtonStyle())
+                        .keyboardShortcut(.defaultAction)
                         .disabled(store.isRemoving || lines.isEmpty)
                 }
             }

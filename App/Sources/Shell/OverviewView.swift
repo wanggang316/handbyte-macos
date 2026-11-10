@@ -48,7 +48,7 @@ struct OverviewView: View {
 
     private func introLine(_ symbol: String, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Image(systemName: symbol).foregroundStyle(HB.Palette.brand).frame(width: 16)
+            Image(systemName: symbol).foregroundStyle(HB.Palette.brand).frame(width: 16).accessibilityHidden(true)
             Text(text).font(HB.Typography.body).foregroundStyle(HB.Palette.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

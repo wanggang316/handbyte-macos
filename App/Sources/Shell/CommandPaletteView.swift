@@ -14,7 +14,7 @@ struct CommandPaletteView: View {
         let commands = PaletteCommand.matching(query)
         VStack(spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(HB.Palette.textTertiary)
+                Image(systemName: "magnifyingglass").foregroundStyle(HB.Palette.textTertiary).accessibilityHidden(true)
                 TextField("Type a command", text: $query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 16))
@@ -89,7 +89,7 @@ private struct PaletteRow: View {
                 Text(command.title).foregroundStyle(HB.Palette.text)
                 Spacer()
                 if isCurrent {
-                    Image(systemName: "return").font(.system(size: 11)).foregroundStyle(HB.Palette.textTertiary)
+                    Image(systemName: "return").font(.system(size: 11)).foregroundStyle(HB.Palette.textTertiary).accessibilityHidden(true)
                 }
             }
             .font(HB.Typography.body)
@@ -101,5 +101,6 @@ private struct PaletteRow: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
+        .accessibilityAddTraits(isCurrent ? .isSelected : [])
     }
 }
