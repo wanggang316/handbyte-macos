@@ -193,6 +193,7 @@ struct AppIcon: View {
 
 private struct AppInspector: View {
     @Environment(AppsStore.self) private var store
+    @State var confirmBrew = false
 
     var body: some View {
         @Bindable var store = store
@@ -214,6 +215,7 @@ private struct AppInspector: View {
                             fact("Source", app.caskToken.map { "Homebrew (\($0))" } ?? app.source.rawValue)
                             fact("Version", app.version ?? "—")
                             fact("Runs on", app.architectures.joined(separator: ", "))
+                            fact("Signed by", app.team.map { "Team \($0)" } ?? "No team")
                         }
                         if app.lastUsed == nil {
                             Text("Spotlight has no date of last use. Unknown is not the same as never.")
@@ -239,6 +241,9 @@ private struct AppInspector: View {
                                 FileToggle(file: file)
                             }
                         }
+                        if !store.systemFiles.isEmpty {
+                            systemSection
+                        }
                     }
                     .padding(18)
                 }
@@ -247,6 +252,33 @@ private struct AppInspector: View {
         } else {
             Text("Choose an app").font(HB.Typography.body).foregroundStyle(HB.Palette.textTertiary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    /// Files in /Library: they belong to root, so Handbyte lists them and
+    /// the user removes them in Finder with an administrator password.
+    private var systemSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Outside your home folder").hbLabel()
+            Text("These files belong to the system administrator. Handbyte does not remove them. After the uninstall, move them to the Trash in Finder; macOS asks for your password. A background item stays active until you restart.")
+                .font(.system(size: 11)).foregroundStyle(HB.Palette.textTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+            ForEach(store.systemFiles) { file in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Image(systemName: "lock").foregroundStyle(HB.Palette.textTertiary).accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(file.url.lastPathComponent).foregroundStyle(HB.Palette.text).lineLimit(1).truncationMode(.middle)
+                        Text("\(file.fileClass) · \(file.confidence.rawValue) match · \(file.url.deletingLastPathComponent().fileSystemPath)")
+                            .font(.system(size: 10)).foregroundStyle(HB.Palette.textTertiary).lineLimit(1).truncationMode(.middle)
+                    }
+                    Spacer(minLength: 6)
+                    Button("Show") { store.reveal(file.url) }
+                        .buttonStyle(LinkButtonStyle())
+                        .help("Show \(file.url.fileSystemPath) in Finder")
+                }
+                .font(.system(size: 12))
+                .accessibilityElement(children: .combine)
+            }
         }
     }
 
@@ -264,6 +296,9 @@ private struct AppInspector: View {
             if let refusal {
                 Text(refusal).font(.system(size: 11)).foregroundStyle(HB.Palette.review).fixedSize(horizontal: false, vertical: true)
             }
+            if app.caskToken != nil, !app.isSystem {
+                brewRow(app)
+            }
             HStack {
                 Button("Remove Files Only…") { store.reviewing = .reset }
                     .disabled(app.isSystem || store.files.allSatisfy { !$0.isSelected })
@@ -277,6 +312,28 @@ private struct AppInspector: View {
         }
         .padding(14)
         .overlay(alignment: .top) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
+    }
+}
+
+extension AppInspector {
+    @ViewBuilder
+    func brewRow(_ app: InstalledApp) -> some View {
+        if let result = store.brewResult {
+            Text(result.succeeded ? "Homebrew removed \(app.name)." : "brew failed:\n\(result.output)")
+                .font(.system(size: 11, design: result.succeeded ? .default : .monospaced))
+                .foregroundStyle(result.succeeded ? HB.Palette.textSecondary : HB.Palette.review)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        if store.canUseBrew {
+            Button(store.isRunningBrew ? "Running brew…" : "Uninstall with Homebrew…") { confirmBrew = true }
+                .disabled(store.isRunningBrew)
+                .help("Run brew uninstall --cask \(app.caskToken ?? ""). Homebrew deletes the app; it does not go to the Trash.")
+                .confirmationDialog("Uninstall \(app.name) with Homebrew?", isPresented: $confirmBrew) {
+                    Button("Run brew uninstall --cask \(app.caskToken ?? "")", role: .destructive) { store.uninstallWithHomebrew() }
+                } message: {
+                    Text("Homebrew deletes the app. It does not go to the Trash, and History cannot put it back. The files in ~/Library stay; remove them after with Remove Files Only.")
+                }
+        }
     }
 }
 

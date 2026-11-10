@@ -33,6 +33,9 @@ struct AppRemoverTests {
         // Data is not selected by default.
         #expect(FileManager.default.fileExists(atPath: home.path("Library/Application Support/com.example.Notes").path))
         #expect(journal.entries.map(\.ruleID) == ["app:com.example.Notes", "app:com.example.Notes"])
+        // One group, so that one restore puts the app and its files back.
+        #expect(Set(journal.entries.compactMap(\.group)).count == 1)
+        #expect(journal.entries.allSatisfy { $0.group?.hasPrefix("app-") == true })
     }
 
     @Test func refusesSystemHomebrewRunningOutsideAndChangedApps() throws {
@@ -52,6 +55,9 @@ struct AppRemoverTests {
         try FileManager.default.removeItem(at: base.url)
         try home.writeFile("Applications/Notes.app/Contents/Info.plist", size: 10)
         #expect(remover.refusal(for: plan, roots: [root], runningApps: StaticRunningAppsProbe()) == .changed)
+        var withExtension = variant().app
+        withExtension.hasSystemExtension = true
+        #expect(remover.refusal(for: AppRemover.Plan(app: withExtension, removesApp: true, files: []), roots: [root], runningApps: StaticRunningAppsProbe()) == .systemExtension("Notes"))
         // A reset keeps the app, so a Homebrew app may lose its files.
         let reset = AppRemover.Plan(app: variant(cask: "notes").app, removesApp: false, files: plan.files)
         #expect(remover.refusal(for: reset, roots: [root], runningApps: StaticRunningAppsProbe()) == nil)

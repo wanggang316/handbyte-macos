@@ -7,6 +7,7 @@ public struct AppRemover: Sendable {
         case system(String)
         case homebrew(String, token: String)
         case running(String)
+        case systemExtension(String)
         case notInRoot
         case changed
 
@@ -15,6 +16,8 @@ public struct AppRemover: Sendable {
             case .system(let name): "\(name) is part of macOS and cannot be uninstalled."
             case .homebrew(let name, let token): "\(name) was installed with Homebrew. Run: brew uninstall --cask \(token)"
             case .running(let name): "\(name) is running. Quit it first."
+            case .systemExtension(let name):
+                "\(name) installs a system extension. Remove it with the app's own uninstaller, or turn the extension off in System Settings > General > Login Items & Extensions first."
             case .notInRoot: "The app is not directly in an application folder."
             case .changed: "The app changed since review. Open the list again."
             }
@@ -72,6 +75,7 @@ public struct AppRemover: Sendable {
         if app.isSystem { return .system(app.name) }
         guard plan.removesApp else { return nil }
         if let token = app.caskToken { return .homebrew(app.name, token: token) }
+        if app.hasSystemExtension { return .systemExtension(app.name) }
         if runningApps.isRunning(bundleID: app.bundleID) { return .running(app.name) }
         let parent = app.url.deletingLastPathComponent().fileSystemPath
         guard roots.contains(where: { $0.fileSystemPath == parent }), app.url.pathExtension == "app" else { return .notInRoot }
