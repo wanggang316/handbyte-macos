@@ -135,6 +135,7 @@ struct Card<Content: View>: View {
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(hovering ? HB.Palette.text : HB.Palette.textTertiary)
                         .offset(x: hovering && !reduceMotion ? 3 : 0)
+                        .accessibilityHidden(true)
                 }
             }
             content()
@@ -150,7 +151,7 @@ struct Card<Content: View>: View {
         if let action {
             Button(action: action) { body }.buttonStyle(.plain)
         } else {
-            body
+            body.accessibilityElement(children: .combine)
         }
     }
 }
@@ -232,12 +233,15 @@ struct CategoryMeter: View {
                 .clipShape(Capsule())
             }
             .frame(height: 8)
-            .accessibilityElement()
-            .accessibilityLabel(parts.map { "\($0.title) \(ByteFormat.string($0.bytes))" }.joined(separator: ", "))
             if showsLegend {
                 FlowLegend(parts: parts)
             }
         }
+        // The legend repeats the parts of the meter, so VoiceOver reads
+        // both as one element.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Space by category")
+        .accessibilityValue(parts.map { "\($0.title) \(ByteFormat.string($0.bytes))" }.joined(separator: ", "))
     }
 }
 

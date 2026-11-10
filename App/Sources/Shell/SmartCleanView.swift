@@ -121,7 +121,7 @@ struct SmartCleanView: View {
             }
             if store.systemBytes > 0 || store.systemMessage != nil {
                 HStack(spacing: 12) {
-                    Image(systemName: "lock").foregroundStyle(HB.Palette.textTertiary).frame(width: 18)
+                    Image(systemName: "lock").foregroundStyle(HB.Palette.textTertiary).frame(width: 18).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Old system logs").foregroundStyle(HB.Palette.text)
                         Text(store.systemMessage ?? "Crash reports and rotated logs of macOS. They belong to the system, so macOS asks for your password.")
@@ -327,6 +327,7 @@ struct ProgressLine: View {
         .frame(height: 3)
         .hbAnimation(HB.Motion.standard, value: fraction)
         .accessibilityElement()
+        .accessibilityAddTraits(.updatesFrequently)
         .accessibilityLabel("Progress")
         .accessibilityValue("\(Int((fraction * 100).rounded())) percent")
     }

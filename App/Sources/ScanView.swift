@@ -24,6 +24,7 @@ struct ScanView: View {
             Image(systemName: "internaldrive")
                 .font(.system(size: 56))
                 .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
             Text("Handbyte")
                 .font(.largeTitle.weight(.semibold))
             Text("Finds caches, build artifacts and other regenerable data under your home folder and shows you what each item is before anything is moved to the Trash.")
