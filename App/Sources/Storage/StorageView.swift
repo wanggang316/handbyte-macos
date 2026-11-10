@@ -171,15 +171,10 @@ private struct StorageResultView: View {
                 }
             }
             Spacer()
-            Picker("View", selection: mode) {
-                ForEach(StorageStore.Mode.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
-            Button("Scan again", systemImage: "arrow.clockwise", action: store.start)
-                .labelStyle(.iconOnly)
-                .help("Scan again")
+            PillSegments(options: StorageStore.Mode.allCases.map { ($0, $0.rawValue) }, selection: mode)
+            Button("Scan again", action: store.start)
+                .buttonStyle(LinkButtonStyle())
+                .help("Measure the home folder again")
         }
         .padding(.horizontal, HB.Space.page)
         .padding(.vertical, 14)

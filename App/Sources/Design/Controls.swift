@@ -96,6 +96,26 @@ struct NavPill: View {
     }
 }
 
+/// A choice of a few views, drawn as the pills of the top bar, so that no
+/// system accent color appears in the content.
+struct PillSegments<Value: Hashable>: View {
+    let options: [(value: Value, title: String)]
+    @Binding var selection: Value
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options, id: \.value) { option in
+                NavPill(title: option.title, isCurrent: selection == option.value, isPlanned: false) {
+                    selection = option.value
+                }
+            }
+        }
+        .padding(2)
+        .background(HB.Palette.surface, in: Capsule())
+        .accessibilityElement(children: .contain)
+    }
+}
+
 /// A soft-fill card without a border. As a button it darkens a little under
 /// the pointer and its arrow moves to the right.
 struct Card<Content: View>: View {
