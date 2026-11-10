@@ -20,7 +20,9 @@ struct ContentView: View {
                 }
             case .storage:
                 StorageView()
-            case .apps, .history:
+            case .history:
+                HistoryView()
+            case .apps:
                 PlannedView(section: store.section)
             }
         }

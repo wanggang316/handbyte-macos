@@ -17,7 +17,6 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 - An Overview screen with the free space, one main action and the result of
   the last scan.
 - A top bar with the sections Overview, Clean, Apps, Storage and History.
-  Apps and History are planned and show a short description.
 - A Storage section: a scan of the home folder that shows running totals,
   then a treemap and a list of the opened folder, and the largest files.
   It is read-only. A folder that a cleanup rule covers is marked, and
@@ -32,6 +31,9 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   `~/Library/Keychains`, excluded paths and symbolic links cannot be picked,
   and a folder that a cleanup rule covers points to Clean.
 - The Overview names the purgeable part of the free space.
+- History lists each item that was removed or moved to the Trash, newest
+  first. An item in the Trash can be put back with Restore; it never
+  replaces anything at the original place.
 
 ### Changed
 
