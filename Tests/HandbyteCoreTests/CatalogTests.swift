@@ -2,9 +2,9 @@ import Foundation
 import Testing
 @testable import HandbyteCore
 
-/// Rule identifiers printed by the Go CLI as `Source`, taken from
-/// `internal/scanner/presets.go`. `scripts/sync-check.sh` guards the live file;
-/// this literal guards the Swift side against accidental edits.
+/// Rule identifiers printed by the Go CLI as `Source`. `scripts/sync-check.sh`
+/// guards the shared catalog file; this literal makes a change of the rule
+/// set a deliberate edit on this side too.
 private let goRuleIDs: Set<String> = [
     "xcode-derived", "xcode-devicesupport", "xcode-archives", "coresim-cache",
     "go-build", "go-mod-cache", "cargo-registry", "cargo-git", "rustup",

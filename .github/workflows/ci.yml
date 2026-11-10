@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check rule ids against the Go CLI
+      - name: Check the shared catalog against the Go CLI
         run: make sync-check
 
       - name: Test release scripts

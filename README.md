@@ -30,7 +30,7 @@ make build          # swift build of the HandbyteCore and HandbyteUI packages
 make test           # swift test
 make generate       # xcodegen: writes Handbyte.xcodeproj from project.yml
 make app            # unsigned Debug build of Handbyte.app
-make sync-check     # rule ids match the CLI (HANDBYTE_CLI_SRC=../handbyte to use a checkout)
+make sync-check     # shared catalog matches the CLI (HANDBYTE_CLI_SRC=../handbyte to use a checkout)
 make test-scripts   # tests for the release scripts
 make icon           # redraw the app icon set from scripts/render-app-icon.swift
 ```

@@ -9,6 +9,19 @@ public enum Category: String, Sendable, Codable, CaseIterable {
     case vms = "VMs & Containers"
     case trash = "Trash & Logs"
     case other = "Other Large Directories"
+
+    /// The identifier the shared catalog uses for this category.
+    public var catalogID: String {
+        switch self {
+        case .systemCache: "system-cache"
+        case .devCache: "dev-cache"
+        case .xcode: "xcode"
+        case .projectBuild: "project-build"
+        case .vms: "vms"
+        case .trash: "trash"
+        case .other: "other"
+        }
+    }
 }
 
 /// How risky deletion is. Raw values are the integers the Go CLI prints.
@@ -22,6 +35,15 @@ public enum Safety: Int, Sendable, Codable, CaseIterable, Comparable {
 
     public static func < (lhs: Safety, rhs: Safety) -> Bool {
         lhs.rawValue < rhs.rawValue
+    }
+
+    /// The name the shared catalog uses for this tier.
+    public var catalogName: String {
+        switch self {
+        case .auto: "safe"
+        case .review: "review"
+        case .caution: "caution"
+        }
     }
 }
 

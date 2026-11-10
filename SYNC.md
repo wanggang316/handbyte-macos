@@ -1,13 +1,22 @@
 # CLI and app rule synchronization
 
-The Go CLI (`internal/scanner/presets.go` in
-[wanggang316/handbyte](https://github.com/wanggang316/handbyte)) and this app
-(`Sources/HandbyteCore/Catalog.swift`) are separate implementations of
-the same cleanup scope. They stay aligned through identical rule ids: the id a
-rule carries in the app is the exact string the CLI prints as `Source`.
-`scripts/sync-check.sh` compares the two id sets and fails CI on any
-difference; it reads the CLI from `HANDBYTE_CLI_SRC` or downloads `presets.go`
-from the CLI's `main` branch. This file is the human-maintained record of where each rule stands.
+The Go CLI ([wanggang316/handbyte](https://github.com/wanggang316/handbyte))
+and this app are separate implementations of the same cleanup scope. They
+stay aligned through two sets of shared files. The CLI repository is the
+source of truth, and this repository keeps byte-identical copies:
+
+| CLI | App | Content |
+|---|---|---|
+| `catalog/*.json` | `Sources/HandbyteCore/Resources/catalog/` | The cleanup rules: ID, location, category, safety tier, owner apps, summary and recovery text |
+| `testdata/conformance/` | `Tests/HandbyteCoreTests/Conformance/` | Fixture cases with the candidates that a scan must report. Run by `go test` and by `swift test`. |
+
+`scripts/sync-check.sh` fails CI when a copy differs. It reads the CLI from
+`HANDBYTE_CLI_SRC` or downloads it at `HANDBYTE_CLI_REF` (default: `main`).
+To change a rule, change it in the CLI repository, then run
+`scripts/sync-check.sh --update` here.
+
+The rules are data, so the table below records only how each side applies a
+rule. This file is the human-maintained record of where each rule stands.
 
 States:
 
@@ -43,7 +52,7 @@ rule is added to either side; remove the row when it is removed from both.
 | `jetbrains` | Implemented | Implemented | |
 | `codex` | Implemented | Implemented | |
 | `xdg-cache` | Implemented | Implemented | |
-| `library-caches` | Intentional difference | Implemented | The CLI also lists a child of `~/Library/Caches` that a more specific preset matches (for example `go-build`), so that directory appears twice. The app deduplicates by file identity and keeps the more specific rule. |
+| `library-caches` | Implemented | Implemented | |
 | `library-logs` | Implemented | Implemented | |
 | `containers` | Implemented | Implemented | |
 | `orbstack` | Implemented | Implemented | |
@@ -76,6 +85,7 @@ Scan-wide differences that belong to no single rule:
 
 | Behaviour | CLI | App | Note |
 |---|---|---|---|
+| Project evidence | Implemented | Pending | The CLI reports build output only when a marker file of the matching ecosystem (for example `package.json` for `node_modules`) is at the nearest project boundary. The app reports each directory with a matching name. The conformance cases contain only projects with a marker. |
 | Hard links | Intentional difference | Implemented | The CLI counts every hard link to a file, so a file with two links is counted twice. The app counts an inode once per scan, so the sum over all candidates equals the bytes a cleanup can free. `scripts/parity.sh` reports both effects as expected size differences. |
 | Operations journal | Intentional difference | Intentional difference | The CLI appends JSON Lines to `actions.jsonl` and reads it back for `restore`. The app appends tab-separated lines to `~/Library/Logs/handbyte/operations.log` as an audit trail only. Neither side reads the other file. |
 | Settings file | Intentional difference | Intentional difference | The CLI stores roots and exclusions in its own `config.json`. The app stores deletion mode, minimum size, roots and exclusions in `~/Library/Application Support/Handbyte/settings.json`. Neither side reads the other file. |
