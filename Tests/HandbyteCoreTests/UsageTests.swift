@@ -32,6 +32,7 @@ private struct UsageCase: Decodable {
     let name: String
     let files: [File]
     let hardLinks: [Link]?
+    let clones: [Link]?
     let symlinks: [Link]?
     let expect: Expectation
 }
@@ -53,6 +54,12 @@ struct UsageTests {
             for link in value.hardLinks ?? [] {
                 try home.hardLink(link.path, to: link.target)
             }
+            var cloned = true
+            for link in value.clones ?? [] {
+                cloned = try home.clone(link.path, of: link.target) && cloned
+            }
+            // A case with clones needs a volume that can clone.
+            guard cloned else { continue }
             for link in value.symlinks ?? [] {
                 // The text of the link is the target as written in the case.
                 try FileManager.default.createSymbolicLink(
@@ -155,6 +162,58 @@ struct UsageTests {
         let result = try #require(await UsageScanner().scan(alias))
         #expect(result.path == home.url.path(percentEncoded: false).replacing(/\/$/, with: ""))
         #expect(UsageScanner.physicalPath(URL(filePath: "/var")) == "/private/var")
+    }
+
+    @Test func fullClonesCountOnce() async throws {
+        let home = try TemporaryHome()
+        defer { home.cleanUp() }
+        try home.writeFile("a/original", size: 100_000)
+        guard try home.clone("a/copy", of: "a/original"), try home.clone("b/copy", of: "a/original") else { return }
+        var options = UsageScanner.Options()
+        options.workers = 3
+
+        let single = try #require(await UsageScanner().scan(home.path("a")))
+        let result = try #require(await UsageScanner().scan(home.url, options: options))
+
+        let size = try home.allocatedBytes("a/original")
+        #expect(size > 0)
+        #expect(result.root.allocatedBytes == size)
+        #expect(result.root.fileCount == 3)
+        #expect(result.root.logicalBytes == 300_000)
+        #expect(!result.root.mayShare)
+        // In one directory, the name that sorts first carries the size.
+        #expect(single.root.children.map { "\($0.name)=\($0.allocatedBytes)" } == ["copy=\(size)", "original=0"])
+    }
+
+    @Test func partialClonesCountInFullAndMayShare() async throws {
+        let home = try TemporaryHome()
+        defer { home.cleanUp() }
+        try home.writeFile("original", size: 100_000)
+        guard try home.clone("dir/changed", of: "original") else { return }
+        let handle = try FileHandle(forWritingTo: home.url.appending(path: "dir/changed"))
+        try handle.write(contentsOf: Data("changed".utf8))
+        try handle.close()
+
+        let result = try #require(await UsageScanner().scan(home.url))
+
+        let dir = try #require(result.root.children.first { $0.name == "dir" })
+        let changed = try #require(dir.children.first)
+        let original = try #require(result.root.children.first { $0.name == "original" })
+        #expect(original.allocatedBytes > 0 && changed.allocatedBytes > 0)
+        #expect(result.root.allocatedBytes == original.allocatedBytes + changed.allocatedBytes)
+        #expect(changed.mayShare && original.mayShare && dir.mayShare && result.root.mayShare)
+        #expect(result.largest.allSatisfy { $0.mayShare })
+    }
+
+    @Test func plainFilesHaveNoMark() async throws {
+        let home = try TemporaryHome()
+        defer { home.cleanUp() }
+        try home.writeFile("a/x", size: 5000)
+
+        let result = try #require(await UsageScanner().scan(home.url))
+
+        #expect(!result.root.mayShare)
+        #expect(result.root.children.allSatisfy { !$0.mayShare })
     }
 
     @Test func aFileIsNotATree() async throws {
