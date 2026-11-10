@@ -53,7 +53,7 @@ extension Rule {
         }
     }
 
-    func isMoreSpecific(than other: Rule) -> Bool {
+    public func isMoreSpecific(than other: Rule) -> Bool {
         specificity > other.specificity
     }
 }

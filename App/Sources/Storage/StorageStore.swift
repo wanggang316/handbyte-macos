@@ -30,6 +30,11 @@ final class StorageStore {
     var selectedRowID: StorageBrowser.Row.ID?
 
     let root: URL
+    /// Which folders a cleanup rule covers. The app store keeps it in step
+    /// with the settings.
+    var hints: CleanupHints?
+    /// Opens Clean. Set by the app store.
+    var openClean: () -> Void = {}
     private let scanner = UsageScanner()
     private var task: Task<Void, Never>?
 
@@ -104,6 +109,11 @@ final class StorageStore {
         self.browser?.leave(to: depth)
         // Keep the place: highlight the folder that was open.
         selectedRowID = opened
+    }
+
+    /// The cleanup rule that covers a row, if any.
+    func rule(for row: StorageBrowser.Row) -> Rule? {
+        row.path.flatMap { hints?.rule(for: $0) }
     }
 
     func reveal(_ path: String) {
