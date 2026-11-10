@@ -1,5 +1,6 @@
 import Foundation
 import HandbyteCore
+import HandbyteUI
 
 /// Environment variables for manual testing against a disposable fixture.
 /// They win over the settings file for this launch only. Run the binary
@@ -13,12 +14,18 @@ import HandbyteCore
 ///   fixture never reads or writes the real home.
 /// - `HANDBYTE_MIN_SIZE`: minimum candidate size in the Go CLI's syntax (`50M`).
 /// - `HANDBYTE_PROJECT_ROOTS`: comma-separated project roots that replace the defaults.
+/// - `HANDBYTE_SECTION`: section the window opens with (`clean`, `apps`, ...).
 enum LaunchOverrides {
     static func home(environment: [String: String] = ProcessInfo.processInfo.environment) -> URL {
         if let path = environment["HANDBYTE_HOME"], !path.isEmpty {
             return URL(filePath: path, directoryHint: .isDirectory)
         }
         return FileManager.default.homeDirectoryForCurrentUser
+    }
+
+    /// The section the window opens with; Overview unless the environment names another.
+    static func section(environment: [String: String] = ProcessInfo.processInfo.environment) -> AppSection {
+        environment["HANDBYTE_SECTION"].flatMap(AppSection.init(rawValue:)) ?? .overview
     }
 
     enum Field: Hashable {

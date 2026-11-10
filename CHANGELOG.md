@@ -14,7 +14,16 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Added
 
+- An Overview screen with the free space, one main action and the result of
+  the last scan.
+- A top bar with the sections Overview, Clean, Apps, Storage and History.
+  Apps, Storage and History are planned and show a short description.
+
 ### Changed
+
+- A new app icon and a new visual style: ink on paper with one green.
+- The cleanup rules come from a catalog file shared with the CLI. The
+  cleanup scope is the same.
 
 ### Deprecated
 
