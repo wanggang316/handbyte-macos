@@ -30,8 +30,11 @@ final class StorageStore {
     private(set) var browser: StorageBrowser?
     private(set) var startedAt = Date()
     var mode: Mode = .folders
-    /// The highlighted row of the opened folder.
-    var selectedRowID: StorageBrowser.Row.ID?
+    /// The highlighted row of the opened folder. A new row clears the note
+    /// about the last pick.
+    var selectedRowID: StorageBrowser.Row.ID? {
+        didSet { if selectedRowID != oldValue { notice = nil } }
+    }
 
     let root: URL
     /// Which folders a cleanup rule covers. The app store keeps it in step
@@ -39,6 +42,20 @@ final class StorageStore {
     var hints: CleanupHints?
     /// Opens Clean. Set by the app store.
     var openClean: () -> Void = {}
+    /// Which paths may be collected. The app store keeps it in step with
+    /// the exclusions of the settings.
+    var collectPolicy: CollectPolicy
+    /// Where the moves of collected items are recorded.
+    var journalURL: URL?
+
+    /// Items picked for the Trash, in the order of picking.
+    private(set) var collected: [CollectedItem] = []
+    /// One line about the last pick, for the footer.
+    private(set) var notice: String?
+    var isReviewingCollection = false
+    private(set) var isMovingCollection = false
+    /// Outcomes of the last move, shown in the review sheet.
+    private(set) var collectOutcomes: [Collector.Outcome]?
     private let scanner = UsageScanner()
     private var task: Task<Void, Never>?
 
@@ -50,6 +67,7 @@ final class StorageStore {
     init(root: URL, summaries: UsageSummaryStore) {
         self.root = root
         self.summaries = summaries
+        collectPolicy = CollectPolicy(home: root, exclusions: [])
         lastSummary = summaries.load(path: Self.physical(root))
     }
 
@@ -139,6 +157,77 @@ final class StorageStore {
     /// The cleanup rule that covers a row, if any.
     func rule(for row: StorageBrowser.Row) -> Rule? {
         row.path.flatMap { hints?.rule(for: $0) }
+    }
+
+    // MARK: Collector
+
+    var collectedBytes: Int64 { collected.reduce(0) { $0 + $1.size } }
+
+    func isCollected(_ path: String) -> Bool {
+        collected.contains { $0.url.fileSystemPath == path }
+    }
+
+    /// Why a path cannot be picked, or nil. A folder that a cleanup rule
+    /// covers points to Clean.
+    func collectRefusal(_ path: String) -> String? {
+        if hints?.rule(for: path) != nil { return "A cleanup rule covers this folder. Review it in Clean." }
+        return collectPolicy.reason(for: URL(filePath: path))
+    }
+
+    /// Adds a path to the Trash list, or removes it when it is in the list.
+    func toggleCollect(path: String, size: Int64) {
+        if let index = collected.firstIndex(where: { $0.url.fileSystemPath == path }) {
+            collected.remove(at: index)
+            notice = nil
+            return
+        }
+        if let refusal = collectRefusal(path) {
+            notice = refusal
+            return
+        }
+        guard let item = collectPolicy.item(at: URL(filePath: path), size: size) else {
+            notice = "The item is no longer there. Scan again."
+            return
+        }
+        collected.append(item)
+        notice = nil
+    }
+
+    func removeCollected(_ item: CollectedItem) {
+        collected.removeAll { $0 == item }
+        if collected.isEmpty, collectOutcomes == nil { isReviewingCollection = false }
+    }
+
+    func clearCollected() {
+        collected.removeAll()
+    }
+
+    func moveCollected() {
+        guard !isMovingCollection, !collected.isEmpty else { return }
+        isMovingCollection = true
+        let items = collected
+        let policy = collectPolicy
+        let journal = journalURL.map { OperationsJournal(fileURL: $0) }
+        Task.detached { [weak self] in
+            let outcomes = Collector().collect(items, policy: policy, journal: journal)
+            await self?.finishMove(outcomes)
+        }
+    }
+
+    private func finishMove(_ outcomes: [Collector.Outcome]) {
+        isMovingCollection = false
+        collectOutcomes = outcomes
+        collected.removeAll()
+    }
+
+    /// Closes the review. After a move the tree no longer matches the disk,
+    /// so it is measured again.
+    func closeCollection() {
+        isReviewingCollection = false
+        if collectOutcomes != nil {
+            collectOutcomes = nil
+            start()
+        }
     }
 
     func reveal(_ path: String) {
