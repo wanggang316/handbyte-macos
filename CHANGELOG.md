@@ -20,7 +20,8 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   Apps and History are planned and show a short description.
 - A Storage section: a scan of the home folder that shows running totals,
   then a treemap and a list of the opened folder, and the largest files.
-  It is read-only.
+  It is read-only. A folder that a cleanup rule covers is marked, and
+  "Review in Clean" opens Clean.
 
 ### Changed
 

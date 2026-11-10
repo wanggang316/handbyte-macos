@@ -49,6 +49,7 @@ final class AppStore {
             persistSettings()
             if settings.exclusions != oldValue.exclusions || settings.projectRoots != oldValue.projectRoots {
                 relabel()
+                updateStorageHints()
             }
         }
     }
@@ -85,6 +86,8 @@ final class AppStore {
             settings = AppSettings()
             settingsError = "Settings file could not be read, defaults are in use: \(error.localizedDescription)"
         }
+        updateStorageHints()
+        storage.openClean = { [weak self] in self?.openCleanFromStorage() }
     }
 
     /// AppSettings plus the launch overrides, which win when set.
@@ -157,6 +160,18 @@ final class AppStore {
         }
         volume = VolumeUsage(totalBytes: Int64(total), availableBytes: available)
         volumeName = values.volumeName
+    }
+
+    private func updateStorageHints() {
+        let configuration = configuration
+        storage.hints = CleanupHints(rules: configuration.rules, home: home, projectRoots: configuration.projectRoots)
+    }
+
+    /// From a folder of Storage that a rule covers: show Clean, and scan
+    /// when there is no result yet.
+    func openCleanFromStorage() {
+        section = .clean
+        if phase == .idle { startScan() }
     }
 
     /// The main action of the Overview: scan, and show the scan.

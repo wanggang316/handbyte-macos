@@ -183,12 +183,20 @@ private struct StorageResultView: View {
     private var footer: some View {
         HStack(spacing: 12) {
             if let row = store.selectedRow {
+                if let rule = store.rule(for: row) {
+                    CleanupTag()
+                        .help(rule.summary + " " + rule.recovery)
+                }
                 Text(row.path ?? row.title)
                     .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(HB.Palette.textSecondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer()
+                if store.rule(for: row) != nil {
+                    Button("Review in Clean", action: store.openClean)
+                        .help("Clean scans this folder again and shows what it can remove")
+                }
                 if row.canOpen {
                     Button("Open") { store.open(row) }
                 }
@@ -283,6 +291,19 @@ private struct TreemapCell: View {
     }
 }
 
+/// Marks a folder that a cleanup rule covers.
+private struct CleanupTag: View {
+    var body: some View {
+        Text("Cleanable")
+            .font(.system(size: 10, weight: .semibold))
+            .foregroundStyle(HB.Palette.safe)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 1)
+            .background(HB.Palette.brand.opacity(0.14), in: Capsule())
+            .accessibilityLabel("A cleanup rule covers this folder")
+    }
+}
+
 /// The rows of the opened folder, largest first.
 private struct StorageList: View {
     let rows: [StorageBrowser.Row]
@@ -316,6 +337,9 @@ private struct StorageListRow: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundStyle(row.note == nil ? HB.Palette.text : HB.Palette.textTertiary)
+                if store.rule(for: row) != nil {
+                    CleanupTag()
+                }
                 Spacer(minLength: 8)
                 Text(row.note ?? ((row.incomplete ? "≥ " : "") + ByteFormat.string(row.allocatedBytes)))
                     .monospacedDigit()
