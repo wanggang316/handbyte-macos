@@ -178,7 +178,7 @@ private struct StorageResultView: View {
                                 .font(.system(size: 9, weight: .semibold))
                                 .foregroundStyle(HB.Palette.textTertiary)
                         }
-                        NavPill(title: crumb.title, isCurrent: crumb.depth == browser.trail.count, isPlanned: false) {
+                        NavPill(title: crumb.title, isCurrent: crumb.depth == browser.trail.count) {
                             store.mode = .folders
                             store.leave(to: crumb.depth)
                         }
