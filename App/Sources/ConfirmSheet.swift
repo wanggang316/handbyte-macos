@@ -76,6 +76,7 @@ struct ConfirmSheet: View {
                     .disabled(!acknowledged)
                 } else {
                     Button("Move to Trash") { store.confirmClean() }
+                        .keyboardShortcut(.defaultAction)
                 }
             }
         }
