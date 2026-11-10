@@ -19,19 +19,4 @@ public enum AppSection: String, Sendable, CaseIterable, Identifiable {
         case .history: "History"
         }
     }
-
-    /// False for a section that is planned but not built yet. The top bar
-    /// shows it, and it opens a short description in place of a screen.
-    public var isAvailable: Bool {
-        switch self {
-        case .overview, .clean, .storage, .history, .apps: true
-        }
-    }
-
-    /// What a planned section will do. Empty for a section that is built.
-    public var plannedSummary: String {
-        switch self {
-        case .overview, .clean, .storage, .history, .apps: ""
-        }
-    }
 }

@@ -63,8 +63,6 @@ struct LinkButtonStyle: ButtonStyle {
 struct NavPill: View {
     let title: String
     let isCurrent: Bool
-    /// A planned section is shown in a weaker tone.
-    let isPlanned: Bool
     let action: () -> Void
     @State private var hovering = false
 
@@ -82,13 +80,13 @@ struct NavPill: View {
         .onHover { hovering = $0 }
         .animation(HB.Motion.quick, value: hovering)
         .animation(HB.Motion.quick, value: isCurrent)
-        .help(isPlanned ? "\(title): planned for a later version" : title)
+        .help(title)
         .accessibilityAddTraits(isCurrent ? .isSelected : [])
     }
 
     private var foreground: Color {
         if isCurrent || hovering { return HB.Palette.text }
-        return isPlanned ? HB.Palette.textTertiary : HB.Palette.textSecondary
+        return HB.Palette.textSecondary
     }
 
     private var background: Color {
@@ -106,7 +104,7 @@ struct PillSegments<Value: Hashable>: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(options, id: \.value) { option in
-                NavPill(title: option.title, isCurrent: selection == option.value, isPlanned: false) {
+                NavPill(title: option.title, isCurrent: selection == option.value) {
                     selection = option.value
                 }
             }

@@ -9,7 +9,7 @@ struct SectionTabs: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(AppSection.allCases) { section in
-                NavPill(title: section.title, isCurrent: store.section == section, isPlanned: false) {
+                NavPill(title: section.title, isCurrent: store.section == section) {
                     store.section = section
                 }
             }
