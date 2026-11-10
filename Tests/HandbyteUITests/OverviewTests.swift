@@ -31,6 +31,12 @@ struct OverviewTests {
         #expect(VolumeUsage(totalBytes: 100, availableBytes: 500).usedFraction == 0)
     }
 
+    @Test func purgeableSpaceIsTheDifferenceOfTheTwoFreeValues() {
+        #expect(VolumeUsage(totalBytes: 500, availableBytes: 200, immediatelyAvailableBytes: 150).purgeableBytes == 50)
+        #expect(VolumeUsage(totalBytes: 500, availableBytes: 200).purgeableBytes == 0)
+        #expect(VolumeUsage(totalBytes: 500, availableBytes: 200, immediatelyAvailableBytes: 250).purgeableBytes == 0)
+    }
+
     @Test func beforeAScanTheHeroShowsFreeSpaceAndOffersAScan() {
         let summary = OverviewSummary(candidates: nil, volume: volume)
         #expect(summary.heroBytes == 200_000_000_000)
