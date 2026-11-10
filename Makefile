@@ -14,6 +14,7 @@ test:
 
 test-scripts:
 	bash scripts/tests/release-lib.test.sh
+	bash scripts/tests/prepare-release-tag.test.sh
 
 sync-check:
 	scripts/sync-check.sh

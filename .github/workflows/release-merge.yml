@@ -1,0 +1,81 @@
+name: release-merge
+
+# GITHUB_TOKEN does not trigger workflows on tag pushes or release publication.
+# Call build and distribution directly so a merged release PR ships end to end.
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-merge
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+      - name: Verify the merge commit and push the release tag
+        id: meta
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          set -euo pipefail
+          git config user.name "handbyte release bot"
+          git config user.email "noreply@handbyte.gumpw.com"
+          bash scripts/prepare-release-tag.sh "$HEAD_REF" "$SHA"
+          TAG="${HEAD_REF#release/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: tag
+    uses: ./.github/workflows/release.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit
+
+  publish:
+    needs: [tag, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Verify assets and publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.tag.outputs.tag }}
+          VERSION: ${{ needs.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          for asset in "Handbyte-$VERSION.dmg" "Handbyte-$VERSION.dmg.sha256" Handbyte.dmg appcast.xml; do
+            if ! grep -qxF "$asset" <<<"$ASSETS"; then
+              echo "::error::Release $TAG is missing $asset"
+              exit 1
+            fi
+          done
+          gh release edit "$TAG" --draft=false --latest
+          gh release view "$TAG" --json url,isDraft
+
+  distribute:
+    needs: [tag, publish]
+    uses: ./.github/workflows/publish.yml
+    with:
+      tag: ${{ needs.tag.outputs.tag }}
+    secrets: inherit

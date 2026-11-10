@@ -40,18 +40,23 @@ output on this machine; it is a manual tool, not a CI gate.
 
 ## Release
 
-A release is a release PR, then a tag push. The runbook is
+Merging a release PR publishes the release. The runbook is
 [`.claude/skills/release/SKILL.md`](.claude/skills/release/SKILL.md).
 
 1. Write the release notes into [`CHANGELOG.md`](CHANGELOG.md) and run
    `make bump-version VERSION=X.Y.Z`, which updates `project.yml`.
-2. Merge the release PR, then tag the merged commit `vX.Y.Z`.
-3. `release.yml` signs, notarizes, builds the DMG and the Sparkle appcast, and
-   opens a draft GitHub Release.
-4. Publish the draft. `publish.yml` then commits the appcast to `docs/` of
+2. Open a PR from `release/vX.Y.Z` to `main`. After approval, merge it.
+3. `release-merge.yml` verifies the merged commit and creates the annotated
+   tag. It calls `release.yml` to sign, notarize, and build the DMG and
+   Sparkle appcast, then checks the assets and publishes the GitHub Release.
+4. It calls `publish.yml` to commit the appcast to `docs/` of
    [wanggang316/handbyte](https://github.com/wanggang316/handbyte), which
-   GitHub Pages serves at <https://handbyte.gumpw.com/appcast.xml>, and updates
+   GitHub Pages serves at <https://handbyte.gumpw.com/appcast.xml>, and update
    the Homebrew cask in `wanggang316/homebrew-tap`.
+
+Retry failed jobs in `release-merge` after a transient failure. Manual tag
+pushes and workflow dispatch remain available: they create a draft release,
+which must be published separately to trigger distribution.
 
 The release workflows read these repository secrets:
 `DEVELOPER_ID_CERT_P12_BASE64`, `DEVELOPER_ID_CERT_PASSWORD`, `AC_API_KEY_ID`,

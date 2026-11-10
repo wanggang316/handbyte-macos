@@ -4,8 +4,8 @@
 # page reads for the download button, then update the Homebrew cask in
 # wanggang316/homebrew-tap.
 #
-# Runs on `release: published`, not on the tag push, so the Sparkle feed and
-# the cask only ever point at assets that are public. Prereleases are skipped.
+# Called by release-merge.yml after publication, or by `release: published`
+# for manual releases. The feed and cask must reference a public stable release.
 #
 # Repository secret:
 #   PUBLISH_TOKEN  Fine-grained PAT with Contents: read and write on
@@ -13,6 +13,12 @@
 name: publish
 
 on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Existing release tag
+        required: true
+        type: string
   release:
     types: [published]
   workflow_dispatch:
@@ -36,7 +42,7 @@ jobs:
       - name: Resolve tag
         id: meta
         env:
-          INPUT_TAG: ${{ github.event.inputs.tag }}
+          INPUT_TAG: ${{ inputs.tag }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           IS_PRERELEASE: ${{ github.event.release.prerelease }}
         run: |
@@ -79,6 +85,11 @@ jobs:
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
+          STATE=$(gh release view "$TAG" --json isDraft,isPrerelease --jq '[.isDraft, .isPrerelease] | any')
+          if [[ "$STATE" != "false" ]]; then
+            echo "::error::Distribution requires a published stable release"
+            exit 1
+          fi
           mkdir -p "$RUNNER_TEMP/assets"
           gh release download "$TAG" --dir "$RUNNER_TEMP/assets" \
             --pattern appcast.xml --pattern "Handbyte-$VERSION.dmg" --pattern "Handbyte-$VERSION.dmg.sha256"
