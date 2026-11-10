@@ -32,9 +32,11 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   and a folder that a cleanup rule covers points to Clean.
 - The Overview names the purgeable part of the free space.
 - Smart Clean names the old system logs (crash reports older than 30 days,
-  rotated logs older than 7 days). Clean with Password runs fixed commands
-  as root after the macOS password dialog; they are the same as
-  `handbyte clean --system`.
+  rotated logs older than 7 days, logs in /Library/Logs older than 30
+  days). Clean with Password runs fixed commands as root after the macOS
+  password dialog; they are the same as `handbyte clean --system`. The
+  unified log of macOS is shown apart: Erase runs `log erase --all` only
+  after its own confirmation.
 - Apps lists the installed apps with size, last use, source, version and
   architectures, with the filters All, Unused, Largest and Leftovers. The
   inspector shows the files each app keeps in ~/Library with how sure the
@@ -43,6 +45,12 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   Remove Files Only keeps the app. Apps of macOS, apps from Homebrew and
   running apps are refused with the reason. Leftovers lists data of removed
   apps for review; nothing in it is selected.
+- Apps also finds the launchd jobs of an app (by the bundle ID they name or
+  the program they run), the group containers of its signing team and its
+  files in /Library. The files in /Library belong to root: they are listed
+  with Show in Finder and not removed. An app with a system extension is
+  refused. A Homebrew app can be removed with `brew uninstall --cask` after
+  a confirmation.
 - A command palette (⌘K) finds sections and actions by typing. ⌘1 to ⌘5
   open the sections and ⌘R runs Clean Now.
 - On the first run the Overview explains in three lines what Clean Now

@@ -137,6 +137,9 @@ struct SmartCleanView: View {
                 .font(HB.Typography.body)
                 .padding(.horizontal, 6)
             }
+            ForEach(store.reviewSystemRules) { item in
+                ReviewSystemRow(item: item)
+            }
             VStack(spacing: 12) {
                 Button("Clean \(ByteFormat.string(plan.safeBytes))", action: store.cleanSmart)
                     .buttonStyle(PillButtonStyle())
@@ -383,5 +386,38 @@ private struct AreaRow: View {
         .onHover { hovering = $0 }
         .hbAnimation(HB.Motion.quick, value: hovering)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// A system rule that needs its own confirmation, such as the erase of the
+/// unified log. It is never part of Clean.
+private struct ReviewSystemRow: View {
+    let item: AppStore.ReviewSystemRule
+    @Environment(AppStore.self) private var store
+    @State private var confirming = false
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock").foregroundStyle(HB.Palette.textTertiary).frame(width: 18).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.rule.title).foregroundStyle(HB.Palette.text)
+                Text(item.message ?? "Needs review. \(item.rule.summary)")
+                    .font(.system(size: 11)).foregroundStyle(HB.Palette.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            if item.bytes > 0 {
+                Text(ByteFormat.string(item.bytes)).monospacedDigit().foregroundStyle(HB.Palette.textSecondary)
+                Button("Erase…") { confirming = true }
+                    .disabled(store.isCleaningSystem)
+                    .confirmationDialog("Erase the \(item.rule.title.lowercased())?", isPresented: $confirming) {
+                        Button("Erase with Password", role: .destructive) { store.cleanSystem(review: item.id) }
+                    } message: {
+                        Text("\(item.rule.recovery) The command is \(item.rule.shellCommand), run as root after the macOS password dialog.")
+                    }
+            }
+        }
+        .font(HB.Typography.body)
+        .padding(.horizontal, 6)
     }
 }
