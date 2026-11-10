@@ -86,6 +86,8 @@ public struct AppRemover: Sendable {
     public func remove(_ plan: Plan, roots: [URL], runningApps: any RunningAppsProbe, journal: (any Journal)?) throws(Refusal) -> [Outcome] {
         if let refusal = refusal(for: plan, roots: roots, runningApps: runningApps) { throw refusal }
         let ruleID = "app:\(plan.app.bundleID)"
+        // One group, so that History puts the app and its files back together.
+        let group = "app-" + JournalEntry.newID().prefix(8).lowercased()
         var outcomes: [Outcome] = []
         func move(_ url: URL, bytes: Int64, check: () -> String?) -> Bool {
             if let reason = check() {
@@ -95,11 +97,11 @@ public struct AppRemover: Sendable {
             do {
                 let destination = try trash(url)
                 outcomes.append(Outcome(url: url, bytes: bytes, status: .moved(destination)))
-                try? journal?.record(JournalEntry(timestamp: now(), action: .trash, outcome: .moved, ruleID: ruleID, bytes: bytes, path: url.fileSystemPath, detail: destination.fileSystemPath))
+                try? journal?.record(JournalEntry(timestamp: now(), action: .trash, outcome: .moved, ruleID: ruleID, bytes: bytes, path: url.fileSystemPath, detail: destination.fileSystemPath, group: group))
                 return true
             } catch {
                 outcomes.append(Outcome(url: url, bytes: bytes, status: .failed(error.localizedDescription)))
-                try? journal?.record(JournalEntry(timestamp: now(), action: .trash, outcome: .failed, ruleID: ruleID, bytes: 0, path: url.fileSystemPath, detail: error.localizedDescription))
+                try? journal?.record(JournalEntry(timestamp: now(), action: .trash, outcome: .failed, ruleID: ruleID, bytes: 0, path: url.fileSystemPath, detail: error.localizedDescription, group: group))
                 return false
             }
         }

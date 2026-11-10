@@ -38,16 +38,15 @@ struct CleanerTests {
             #expect(FileManager.default.fileExists(atPath: destination.appending(path: "payload.bin").path))
             #expect(!FileManager.default.fileExists(atPath: candidate.url.path))
         }
-        let lines = journalLines(journal)
-        #expect(lines.count == 2)
-        #expect(lines.allSatisfy { $0.contains("\ttrash\tmoved\tlibrary-caches\t") })
+        let entries = try journal.entries()
+        #expect(entries.count == 2)
+        #expect(entries.allSatisfy { $0.outcome == .moved && $0.ruleID == "library-caches" && $0.trashIdentity != nil })
         // Directory URLs carry a trailing slash; the journal writes paths without it.
-        let fields = lines.first?.split(separator: "\t", omittingEmptySubsequences: false).map(String.init) ?? []
-        #expect(fields.count == 7)
-        #expect(fields[4] == "1000")
-        #expect(fields[5] == a.url.fileSystemPath)
-        #expect(fields[6].hasPrefix(realTrash.fileSystemPath), "\(fields[6])")
-        #expect(!fields[6].hasSuffix("/"))
+        let first = try #require(entries.first)
+        #expect(first.bytes == 1000)
+        #expect(first.path == a.url.fileSystemPath)
+        #expect(first.detail?.hasPrefix(realTrash.fileSystemPath) == true, "\(first.detail ?? "")")
+        #expect(first.detail?.hasSuffix("/") == false)
     }
 
     @Test func previewChangesNothingAndClaimsZero() async throws {
@@ -73,9 +72,10 @@ struct CleanerTests {
         #expect(outcomes.map(\.status) == [.removed])
         #expect(outcomes.map(\.bytesClaimed) == [512])
         #expect(!FileManager.default.fileExists(atPath: candidate.url.path))
-        let lines = journalLines(journal)
-        #expect(lines.count == 1)
-        #expect(lines.first?.contains("\tremovePermanently\tremoved\tlibrary-caches\t512\t") == true)
+        let entries = try journal.entries()
+        #expect(entries.map(\.outcome) == [.removed])
+        #expect(entries.map(\.action) == [.removePermanently])
+        #expect(entries.map(\.bytes) == [512])
     }
 
     @Test func blockedCandidatesAreSkippedWithThePolicyReason() async throws {
@@ -166,8 +166,8 @@ struct CleanerTests {
         #expect(!message.isEmpty)
         #expect(outcome.bytesClaimed == 0)
         #expect(FileManager.default.fileExists(atPath: candidate.url.path))
-        let lines = journalLines(journal)
-        #expect(lines.count == 1)
-        #expect(lines.first?.contains("\tremovePermanently\tfailed\tlibrary-caches\t0\t") == true)
+        let entries = try journal.entries()
+        #expect(entries.map(\.outcome) == [.failed])
+        #expect(entries.map(\.bytes) == [0])
     }
 }
