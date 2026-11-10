@@ -8,6 +8,7 @@ struct SettingsTests {
     @Test func defaultsMatchTheScanConfigurationAndKeepTheTrash() {
         let settings = AppSettings()
         #expect(settings.deletionMode == .byData)
+        #expect(settings.hasSeenIntro == false)
         #expect(settings.projectRoots == Catalog.defaultProjectRoots)
         #expect(settings.exclusions.isEmpty)
         #expect(settings.minimumSize == 50 * 1024 * 1024)

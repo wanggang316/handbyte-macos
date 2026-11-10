@@ -9,11 +9,7 @@ struct SectionTabs: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(AppSection.allCases) { section in
-                NavPill(
-                    title: section.title,
-                    isCurrent: store.section == section,
-                    isPlanned: !section.isAvailable
-                ) {
+                NavPill(title: section.title, isCurrent: store.section == section, isPlanned: false) {
                     store.section = section
                 }
             }
@@ -34,29 +30,5 @@ struct Wordmark: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Handbyte")
-    }
-}
-
-/// Shown for a section that is planned but not built yet.
-struct PlannedView: View {
-    let section: AppSection
-
-    var body: some View {
-        VStack(spacing: 10) {
-            Text("Planned").hbLabel()
-            Text(section.title)
-                .font(HB.Typography.title)
-                .foregroundStyle(HB.Palette.text)
-            Text(section.plannedSummary)
-                .font(.system(size: 14))
-                .foregroundStyle(HB.Palette.textSecondary)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: 420)
-            Text("This section is not in this version.")
-                .font(HB.Typography.body)
-                .foregroundStyle(HB.Palette.textTertiary)
-        }
-        .padding(HB.Space.page)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -33,6 +33,8 @@ final class AppStore {
     /// The section the window shows. The cleanup flow keeps its phase when
     /// the user looks at another section.
     var section: AppSection = .overview
+    /// The command palette (⌘K) is open.
+    var isShowingPalette = false
 
     /// How the Clean section shows the cleanup: Smart Clean on one screen, or
     /// the full review list ("Choose items").

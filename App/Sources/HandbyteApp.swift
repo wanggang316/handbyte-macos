@@ -1,4 +1,5 @@
 import HandbyteCore
+import HandbyteUI
 import Sparkle
 import SwiftUI
 
@@ -35,6 +36,18 @@ struct HandbyteApp: App {
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)
+            }
+            CommandGroup(after: .sidebar) {
+                Button("Command Palette…") { store.isShowingPalette = true }
+                    .keyboardShortcut("k", modifiers: .command)
+                Divider()
+                ForEach(Array(AppSection.allCases.enumerated()), id: \.element) { index, section in
+                    Button(section.title) { store.section = section }
+                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
+                }
+                Divider()
+                Button("Clean Now") { store.startSmartClean() }
+                    .keyboardShortcut("r", modifiers: .command)
             }
         }
         Settings {

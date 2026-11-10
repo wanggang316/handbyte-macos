@@ -39,6 +39,10 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   Remove Files Only keeps the app. Apps of macOS, apps from Homebrew and
   running apps are refused with the reason. Leftovers lists data of removed
   apps for review; nothing in it is selected.
+- A command palette (⌘K) finds sections and actions by typing. ⌘1 to ⌘5
+  open the sections and ⌘R runs Clean Now.
+- On the first run the Overview explains in three lines what Clean Now
+  takes, what goes to the Trash and where History is.
 - History lists each item that was removed or moved to the Trash, newest
   first. An item in the Trash can be put back with Restore; it never
   replaces anything at the original place.

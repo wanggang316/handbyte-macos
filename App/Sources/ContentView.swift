@@ -5,6 +5,7 @@ struct ContentView: View {
     @Environment(AppStore.self) private var store
 
     var body: some View {
+        @Bindable var store = store
         // A plain stack, not a safe-area inset: a scrolling section would
         // scroll under an inset and the banner would cover its first rows.
         VStack(spacing: 0) {
@@ -28,6 +29,9 @@ struct ContentView: View {
         }
         .frame(minWidth: 760, minHeight: 520)
         .background(HB.Palette.background)
+        .sheet(isPresented: $store.isShowingPalette) {
+            CommandPaletteView()
+        }
         .toolbar {
             wordmarkItem
             ToolbarItem(placement: .principal) {
