@@ -90,6 +90,15 @@ public struct UsageScanner: Sendable {
 
     public init() {}
 
+    /// The path with all symbolic links resolved, as the kernel sees it.
+    /// `URL.resolvingSymlinksInPath()` is not used: it removes `/private`
+    /// from paths such as `/private/tmp`, so they no longer match rules.
+    public static func physicalPath(_ url: URL) -> String? {
+        guard let resolved = realpath(url.path(percentEncoded: false), nil) else { return nil }
+        defer { free(resolved) }
+        return String(cString: resolved)
+    }
+
     /// Scans the tree below `url` in the caller's task. Cancelling that task
     /// stops the scan and returns the partial result. Returns nil when `url`
     /// is not a directory. `progress` gets a snapshot about ten times each
@@ -100,8 +109,7 @@ public struct UsageScanner: Sendable {
         progress: (@Sendable (UsageProgress) -> Void)? = nil
     ) async -> UsageResult? {
         let started = Date()
-        let root = url.resolvingSymlinksInPath().path(percentEncoded: false)
-        let rootPath = root.count > 1 && root.hasSuffix("/") ? String(root.dropLast()) : root
+        guard let rootPath = UsageScanner.physicalPath(url) else { return nil }
         var status = stat()
         guard lstat(rootPath, &status) == 0, status.st_mode & S_IFMT == S_IFDIR else { return nil }
 

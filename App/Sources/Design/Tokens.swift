@@ -28,6 +28,20 @@ enum HB {
         static let safe = Color(light: 0x0B7A50, dark: 0x4FD39A)
         static let review = Color(light: 0x955800, dark: 0xF2B04C)
         static let danger = Color(light: 0xC0283A, dark: 0xD13B4A)
+
+        /// Hues of the storage categories, the same as in the terminal.
+        /// Caches and other stay grey, so that the eye goes to the large
+        /// categories first.
+        static func category(_ id: String) -> Color {
+            switch id {
+            case "apps": Color(light: 0x6A57E8, dark: 0x8F7DFF)
+            case "developer": Color(light: 0x2F7FE0, dark: 0x4AA3FF)
+            case "documents": Color(light: 0x129C8B, dark: 0x35C6B4)
+            case "media": Color(light: 0xD07A1C, dark: 0xF0A04B)
+            case "caches": Color(light: 0x8B8F98, dark: 0x6B6F79)
+            default: Color(light: 0xC9CCD3, dark: 0x454850)
+            }
+        }
     }
 
     enum Radius {

@@ -75,7 +75,7 @@ final class AppStore {
         home = LaunchOverrides.home(environment: environment)
         self.environment = environment
         journalURL = OperationsJournal.defaultURL(home: home)
-        storage = StorageStore(root: home)
+        storage = StorageStore(root: home, summaries: UsageSummaryStore(fileURL: UsageSummaryStore.defaultURL(home: home)))
         settingsStore = SettingsStore(fileURL: SettingsStore.defaultURL(home: home))
         overriddenFields = LaunchOverrides.overridden(environment: environment)
         section = LaunchOverrides.section(environment: environment)
@@ -165,6 +165,7 @@ final class AppStore {
     private func updateStorageHints() {
         let configuration = configuration
         storage.hints = CleanupHints(rules: configuration.rules, home: home, projectRoots: configuration.projectRoots)
+        storage.projectRoots = configuration.projectRoots
     }
 
     /// From a folder of Storage that a rule covers: show Clean, and scan

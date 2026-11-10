@@ -1,3 +1,4 @@
+import HandbyteUI
 import SwiftUI
 
 /// The one large action of a screen: an ink pill. It lifts and gains a ring
@@ -197,6 +198,71 @@ struct LogoMark: View {
         func path(in rect: CGRect) -> Path {
             Path(roundedRect: CGRect(x: 37, y: 8, width: 19, height: 19), cornerRadius: 6.5)
                 .applying(LogoMark.transform(rect))
+        }
+    }
+}
+
+/// A meter of the volume split into parts, with a legend. The rest of the
+/// width is the free space.
+struct CategoryMeter: View {
+    struct Part: Identifiable {
+        let id: String
+        let title: String
+        let bytes: Int64
+    }
+
+    let parts: [Part]
+    let total: Int64
+    var showsLegend = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            GeometryReader { proxy in
+                HStack(spacing: 2) {
+                    ForEach(parts) { part in
+                        let width = total > 0 ? proxy.size.width * CGFloat(part.bytes) / CGFloat(total) : 0
+                        if width >= 1 {
+                            Rectangle()
+                                .fill(HB.Palette.category(part.id))
+                                .frame(width: max(2, width - 2))
+                                .help("\(part.title) · \(ByteFormat.string(part.bytes))")
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+                .background(HB.Palette.surfaceHover)
+                .clipShape(Capsule())
+            }
+            .frame(height: 8)
+            .accessibilityElement()
+            .accessibilityLabel(parts.map { "\($0.title) \(ByteFormat.string($0.bytes))" }.joined(separator: ", "))
+            if showsLegend {
+                FlowLegend(parts: parts)
+            }
+        }
+    }
+}
+
+/// The legend of a category meter: a dot, the title and the size of each part.
+private struct FlowLegend: View {
+    let parts: [CategoryMeter.Part]
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 18) { items }
+            VStack(alignment: .leading, spacing: 4) { items }
+        }
+    }
+
+    @ViewBuilder
+    private var items: some View {
+        ForEach(parts) { part in
+            HStack(spacing: 6) {
+                Circle().fill(HB.Palette.category(part.id)).frame(width: 8, height: 8)
+                Text(part.title).foregroundStyle(HB.Palette.textSecondary)
+                Text(ByteFormat.string(part.bytes)).monospacedDigit().foregroundStyle(HB.Palette.text)
+            }
+            .font(.system(size: 12))
         }
     }
 }

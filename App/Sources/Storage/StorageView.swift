@@ -68,6 +68,11 @@ private struct StorageScanningView: View {
                         .font(HB.Typography.body)
                         .monospacedDigit()
                         .foregroundStyle(HB.Palette.textTertiary)
+                    if let last = store.lastSummary {
+                        Text("Last time \(ByteFormat.string(last.allocatedBytes)), \(last.scannedAt.formatted(.relative(presentation: .named)))")
+                            .font(HB.Typography.body)
+                            .foregroundStyle(HB.Palette.textTertiary)
+                    }
                 }
                 ScrollView {
                     VStack(spacing: 0) {
@@ -110,6 +115,13 @@ private struct StorageScanningView: View {
                     .monospacedDigit()
                     .fontWeight(.medium)
                     .foregroundStyle(HB.Palette.text)
+            } else if let last = store.lastSummary?.top.first(where: { $0.name == entry.name }) {
+                // Until the folder is measured, its size of the last run
+                // stands in, in a faint tone, so that the list is not empty.
+                Text(ByteFormat.string(last.allocatedBytes))
+                    .monospacedDigit()
+                    .foregroundStyle(HB.Palette.textTertiary)
+                    .help("Size at the last scan")
             }
         }
         .font(HB.Typography.body)
@@ -130,6 +142,14 @@ private struct StorageResultView: View {
         VStack(spacing: 0) {
             header(mode: $store.mode)
             if store.mode == .folders, let browser = store.browser {
+                if browser.trail.isEmpty, !store.categories.isEmpty {
+                    CategoryMeter(
+                        parts: store.categories.map { .init(id: $0.id, title: StorageCatalog.shared.title(of: $0.id), bytes: $0.allocatedBytes) },
+                        total: browser.root.allocatedBytes
+                    )
+                    .padding(.horizontal, HB.Space.page)
+                    .padding(.bottom, 14)
+                }
                 HStack(spacing: 16) {
                     TreemapView(rows: browser.rows)
                     StorageList(rows: browser.rows)
