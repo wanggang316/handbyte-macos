@@ -1,75 +1,70 @@
 #!/usr/bin/env bash
-# Fails when the rule ids in the Go CLI presets and the Swift catalog differ.
-# Reads both sources with grep so no Go or Swift toolchain is needed.
+# Fails when the shared catalog or the conformance cases in this repository
+# differ from the Go CLI. Both are byte-identical copies; the CLI is the
+# source of truth.
+#
+#   CLI catalog/*.json          ->  Sources/HandbyteCore/Resources/catalog/
+#   CLI testdata/conformance/   ->  Tests/HandbyteCoreTests/Conformance/
 #
 # The CLI lives in wanggang316/handbyte. HANDBYTE_CLI_SRC names a local
-# checkout of it; without one, presets.go is downloaded from GitHub at
-# HANDBYTE_CLI_REF (default: main).
-#
-# Go ids:    every `Source: "<id>"` in presets.go, plus `artifact:<Name>` for
-#            every row of ProjectArtifactPatterns.
-# Swift ids: every `preset(id: "<id>"` in Catalog.swift, plus `artifact:<name>`
-#            for every `artifact(name: "<name>"`.
+# checkout of it; without one, the repository is downloaded from GitHub at
+# HANDBYTE_CLI_REF (default: main). `scripts/sync-check.sh --update` copies
+# the CLI files into this repository instead of comparing them.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-swift_catalog="$repo_root/Sources/HandbyteCore/Catalog.swift"
+app_catalog="$repo_root/Sources/HandbyteCore/Resources/catalog"
+app_conformance="$repo_root/Tests/HandbyteCoreTests/Conformance"
 cli_ref="${HANDBYTE_CLI_REF:-main}"
+update=false
+[ "${1:-}" = "--update" ] && update=true
 
 if [ -n "${HANDBYTE_CLI_SRC:-}" ]; then
-    go_presets="$HANDBYTE_CLI_SRC/internal/scanner/presets.go"
-    go_label="$go_presets"
+    cli_src="$HANDBYTE_CLI_SRC"
+    cli_label="$cli_src"
 else
-    go_presets="$(mktemp "${TMPDIR:-/tmp}/presets.XXXXXX")"
-    trap 'rm -f "$go_presets"' EXIT
-    go_label="handbyte@$cli_ref internal/scanner/presets.go"
-    curl -fsSL "https://raw.githubusercontent.com/wanggang316/handbyte/$cli_ref/internal/scanner/presets.go" -o "$go_presets" \
-        || { echo "sync-check: cannot download presets.go at ref $cli_ref" >&2; exit 2; }
+    tmp="$(mktemp -d "${TMPDIR:-/tmp}/handbyte-cli.XXXXXX")"
+    trap 'rm -rf "$tmp"' EXIT
+    cli_label="handbyte@$cli_ref"
+    curl -fsSL "https://codeload.github.com/wanggang316/handbyte/tar.gz/$cli_ref" \
+        | tar -xz -C "$tmp" --strip-components=1 \
+        || { echo "sync-check: cannot download the CLI at ref $cli_ref" >&2; exit 2; }
+    cli_src="$tmp"
 fi
 
-for f in "$go_presets" "$swift_catalog"; do
-    if [ ! -f "$f" ]; then
-        echo "sync-check: missing $f" >&2
+cli_catalog="$cli_src/catalog"
+cli_conformance="$cli_src/testdata/conformance"
+for d in "$cli_catalog" "$cli_conformance"; do
+    if [ ! -d "$d" ]; then
+        echo "sync-check: missing $d in $cli_label" >&2
         exit 2
     fi
 done
 
-go_ids() {
-    grep -oE 'Source:[[:space:]]*"[^"]+"' "$go_presets" | sed -E 's/.*"([^"]+)"/\1/'
-    sed -n '/^var ProjectArtifactPatterns/,/^}/p' "$go_presets" \
-        | grep -oE '^[[:space:]]*\{"[^"]+"' | sed -E 's/.*"([^"]+)"/artifact:\1/'
-}
+# The CLI keeps Go sources beside the catalog; only the JSON files are shared.
+staged="$(mktemp -d "${TMPDIR:-/tmp}/handbyte-catalog.XXXXXX")"
+trap 'rm -rf "$staged" ${tmp:+"$tmp"}' EXIT
+cp "$cli_catalog"/*.json "$staged/"
 
-swift_ids() {
-    grep -oE 'preset\(id: "[^"]+"' "$swift_catalog" | sed -E 's/.*"([^"]+)"/\1/'
-    grep -oE 'artifact\(name: "[^"]+"' "$swift_catalog" | sed -E 's/.*"([^"]+)"/artifact:\1/'
-}
-
-go_sorted="$(go_ids | sort -u)"
-swift_sorted="$(swift_ids | sort -u)"
-
-if [ -z "$go_sorted" ] || [ -z "$swift_sorted" ]; then
-    echo "sync-check: extracted an empty id set; the source layout changed" >&2
-    exit 2
-fi
-
-only_go="$(comm -23 <(printf '%s\n' "$go_sorted") <(printf '%s\n' "$swift_sorted"))"
-only_swift="$(comm -13 <(printf '%s\n' "$go_sorted") <(printf '%s\n' "$swift_sorted"))"
-
-if [ -z "$only_go" ] && [ -z "$only_swift" ]; then
-    count="$(printf '%s\n' "$go_sorted" | wc -l | tr -d ' ')"
-    echo "sync-check: OK, $count rule ids match"
+if $update; then
+    rm -rf "$app_catalog" "$app_conformance"
+    mkdir -p "$app_catalog"
+    cp "$staged"/*.json "$app_catalog/"
+    cp -R "$cli_conformance" "$app_conformance"
+    echo "sync-check: copied the catalog and the conformance cases from $cli_label"
     exit 0
 fi
 
-echo "sync-check: rule ids differ between the Go CLI and the Swift catalog" >&2
-if [ -n "$only_go" ]; then
-    echo "only in Go ($go_label):" >&2
-    printf '  %s\n' $only_go >&2
+status=0
+diff -r "$staged" "$app_catalog" >&2 || status=1
+diff -r "$cli_conformance" "$app_conformance" >&2 || status=1
+
+if [ "$status" -eq 0 ]; then
+    count="$(find "$app_catalog" "$app_conformance" -type f | wc -l | tr -d ' ')"
+    echo "sync-check: OK, $count shared files match $cli_label"
+    exit 0
 fi
-if [ -n "$only_swift" ]; then
-    echo "only in Swift (Sources/HandbyteCore/Catalog.swift):" >&2
-    printf '  %s\n' $only_swift >&2
-fi
-echo "Update the other side or record an intentional difference in SYNC.md." >&2
+
+echo "sync-check: the shared files differ from $cli_label" >&2
+echo "Change them in the CLI repository, then run scripts/sync-check.sh --update." >&2
 exit 1

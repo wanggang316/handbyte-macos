@@ -10,12 +10,14 @@ let package = Package(
         .executable(name: "hbscan", targets: ["hbscan"]),
     ],
     targets: [
-        .target(name: "HandbyteCore"),
+        // The catalog is a byte-identical copy of `catalog/` in the CLI
+        // repository; `scripts/sync-check.sh` compares the two.
+        .target(name: "HandbyteCore", resources: [.copy("Resources/catalog")]),
         // Selection, grouping and report logic for the app. No AppKit or
         // SwiftUI so it is testable with `swift test`.
         .target(name: "HandbyteUI", dependencies: ["HandbyteCore"]),
         .executableTarget(name: "hbscan", dependencies: ["HandbyteCore"]),
-        .testTarget(name: "HandbyteCoreTests", dependencies: ["HandbyteCore"]),
+        .testTarget(name: "HandbyteCoreTests", dependencies: ["HandbyteCore"], resources: [.copy("Conformance")]),
         .testTarget(name: "HandbyteUITests", dependencies: ["HandbyteUI"]),
     ],
     swiftLanguageModes: [.v6]
