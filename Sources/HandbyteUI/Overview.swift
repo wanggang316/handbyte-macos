@@ -4,11 +4,22 @@ import HandbyteCore
 /// Capacity of the volume that holds the home folder.
 public struct VolumeUsage: Sendable, Equatable {
     public let totalBytes: Int64
+    /// Space for new files, including the purgeable space.
     public let availableBytes: Int64
+    /// Space that is free now, without the purgeable space. Nil when unknown.
+    public let immediatelyAvailableBytes: Int64?
 
-    public init(totalBytes: Int64, availableBytes: Int64) {
+    public init(totalBytes: Int64, availableBytes: Int64, immediatelyAvailableBytes: Int64? = nil) {
         self.totalBytes = totalBytes
         self.availableBytes = availableBytes
+        self.immediatelyAvailableBytes = immediatelyAvailableBytes
+    }
+
+    /// Space that macOS frees by itself when it needs it: local snapshots,
+    /// caches of iCloud files and similar. Zero when unknown.
+    public var purgeableBytes: Int64 {
+        guard let immediate = immediatelyAvailableBytes else { return 0 }
+        return max(0, availableBytes - immediate)
     }
 
     public var usedBytes: Int64 { max(0, totalBytes - availableBytes) }

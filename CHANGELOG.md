@@ -31,6 +31,7 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   the operations log. Standard folders, private data such as
   `~/Library/Keychains`, excluded paths and symbolic links cannot be picked,
   and a folder that a cleanup rule covers points to Clean.
+- The Overview names the purgeable part of the free space.
 
 ### Changed
 

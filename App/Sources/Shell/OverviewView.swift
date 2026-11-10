@@ -99,6 +99,11 @@ struct OverviewView: View {
                 .foregroundStyle(HB.Palette.textTertiary))
                 .font(HB.Typography.body)
                 .monospacedDigit()
+            if volume.purgeableBytes > 0 {
+                Text("\(ByteFormat.string(volume.purgeableBytes)) of the free space is purgeable: macOS frees it by itself when it needs the space.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(HB.Palette.textTertiary)
+            }
             let summary = store.storage.lastSummary
             CategoryMeter(
                 parts: VolumeBreakdown.parts(volume: volume, home: summary).map { .init(id: $0.id, title: $0.title, bytes: $0.bytes) },
@@ -115,7 +120,7 @@ struct OverviewView: View {
     // MARK: Cards
 
     private func cards(_ summary: OverviewSummary) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12, alignment: .top)], alignment: .center, spacing: 12) {
             Card(label: "Needs your review", action: summary.reviewBytes > 0 ? { store.section = .clean } : nil) {
                 cardBody(
                     value: summary.reviewBytes > 0 ? ByteFormat.string(summary.reviewBytes) : "No items",

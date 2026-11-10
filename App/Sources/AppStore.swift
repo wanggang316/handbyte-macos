@@ -150,7 +150,9 @@ final class AppStore {
     }
 
     func refreshVolume() {
-        let keys: Set<URLResourceKey> = [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey, .volumeNameKey]
+        let keys: Set<URLResourceKey> = [
+            .volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey, .volumeAvailableCapacityKey, .volumeNameKey,
+        ]
         guard let values = try? home.resourceValues(forKeys: keys),
               let total = values.volumeTotalCapacity,
               let available = values.volumeAvailableCapacityForImportantUsage
@@ -159,7 +161,11 @@ final class AppStore {
             volumeName = nil
             return
         }
-        volume = VolumeUsage(totalBytes: Int64(total), availableBytes: available)
+        volume = VolumeUsage(
+            totalBytes: Int64(total),
+            availableBytes: available,
+            immediatelyAvailableBytes: values.volumeAvailableCapacity.map(Int64.init)
+        )
         volumeName = values.volumeName
     }
 
