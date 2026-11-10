@@ -18,7 +18,7 @@ struct OverviewTests {
 
     @Test func sectionsAreInTopBarOrderAndOnlyBuiltOnesOpen() {
         #expect(AppSection.allCases.map(\.title) == ["Overview", "Clean", "Apps", "Storage", "History"])
-        #expect(AppSection.allCases.allSatisfy(\.isAvailable))
+        #expect(AppSection.allCases.filter { !$0.isAvailable }.isEmpty)
 
     }
 
