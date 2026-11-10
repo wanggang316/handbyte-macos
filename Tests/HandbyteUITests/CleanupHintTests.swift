@@ -32,6 +32,10 @@ struct CleanupHintTests {
         #expect(hints.rule(for: "/Users/alice/Documents") == nil)
         #expect(hints.rule(for: "/Users/alice/Downloads") == nil)
         #expect(hints.rule(for: "/Users/alice/Library/Developer/Xcode/Archives") == nil)
+        #expect(hints.rule(for: "/Users/alice/Library/Caches/Google") == nil)
+        #expect(hints.rule(for: "/Users/alice/Library/Caches/Google/Chrome")?.id == "chrome-cache")
+        #expect(hints.rule(for: "/Users/alice/Library/Application Support/Google/Chrome/Profile 2/Code Cache")?.id == "chrome-profile-cache")
+        #expect(hints.rule(for: "/Users/alice/Library/Application Support/Google/Chrome/Profile 2/Cookies") == nil)
         #expect(hints.rule(for: "/Users/alice/Library") == nil)
         #expect(hints.rule(for: "/Users/alice/Library/Caches/go-build/00") == nil)
     }

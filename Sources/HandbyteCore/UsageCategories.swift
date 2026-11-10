@@ -126,7 +126,7 @@ public enum UsageCategories {
     }
 
     /// Whether `path` is strictly inside `directory`.
-    static func isBelow(_ path: String, _ directory: String) -> Bool {
+    public static func isBelow(_ path: String, _ directory: String) -> Bool {
         if directory == "/" { return path != "/" && path.hasPrefix("/") }
         return path.count > directory.count && path.hasPrefix(directory + "/")
     }

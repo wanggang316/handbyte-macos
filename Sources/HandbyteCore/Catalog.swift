@@ -13,6 +13,9 @@ public enum Catalog {
     /// Known locations below the home directory.
     public static var presets: [Rule] { cleanup.presets }
 
+    /// The areas of a cleanup result, in order: ID and title.
+    public static var areas: [(id: String, title: String)] { cleanup.areas }
+
     /// Directory names produced by build tools, matched under the project roots.
     public static var projectArtifacts: [Rule] { cleanup.projectArtifacts }
 
@@ -31,6 +34,7 @@ public enum Catalog {
 
 /// The decoded content of `cleanup.json`.
 struct CleanupCatalog: Sendable {
+    let areas: [(id: String, title: String)]
     let projectRoots: [String]
     let presets: [Rule]
     let projectArtifacts: [Rule]
@@ -56,9 +60,13 @@ struct CleanupCatalog: Sendable {
             let owners: [String]?
             let summary: String
             let recovery: String
+            let area: String
+            let rebuildable: Bool
+            let ownerName: String?
         }
 
         let version: Int
+        let areas: [Category]
         let categories: [Category]
         let projectRoots: [String]
         let rules: [Entry]
@@ -66,7 +74,7 @@ struct CleanupCatalog: Sendable {
 
     init(data: Data) throws {
         let file = try JSONDecoder().decode(File.self, from: data)
-        guard file.version == 1 else {
+        guard file.version == 2 else {
             throw Defect(description: "unsupported version \(file.version)")
         }
         let categories = Dictionary(Category.allCases.map { ($0.catalogID, $0) }, uniquingKeysWith: { first, _ in first })
@@ -83,7 +91,8 @@ struct CleanupCatalog: Sendable {
             }
             let kind: Rule.Kind
             switch (entry.kind, entry.path, entry.name) {
-            case ("preset", let path?, nil) where path.hasPrefix("~/"):
+            case ("preset", let path?, nil) where path.hasPrefix("~/")
+                && path.split(separator: "/").allSatisfy({ !$0.contains("*") || $0 == "*" }):
                 kind = .preset(pathTemplate: path, expandChildren: entry.expandChildren ?? false)
             case ("artifact", nil, let name?) where entry.id == "artifact:\(name)":
                 kind = .projectArtifact(directoryName: name)
@@ -97,14 +106,21 @@ struct CleanupCatalog: Sendable {
                 safety: safety,
                 ownerBundleIDs: entry.owners ?? [],
                 summary: entry.summary,
-                recovery: entry.recovery
+                recovery: entry.recovery,
+                area: entry.area,
+                rebuildable: entry.rebuildable,
+                ownerName: entry.ownerName
             )
+            guard file.areas.contains(where: { $0.id == entry.area }) else {
+                throw Defect(description: "rule \(entry.id): unknown area \(entry.area)")
+            }
             if rule.directoryName == nil {
                 presets.append(rule)
             } else {
                 artifacts.append(rule)
             }
         }
+        self.areas = file.areas.map { ($0.id, $0.title) }
         self.projectRoots = file.projectRoots
         self.presets = presets
         self.projectArtifacts = artifacts

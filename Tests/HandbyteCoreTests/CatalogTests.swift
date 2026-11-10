@@ -6,19 +6,85 @@ import Testing
 /// guards the shared catalog file; this literal makes a change of the rule
 /// set a deliberate edit on this side too.
 private let goRuleIDs: Set<String> = [
-    "xcode-derived", "xcode-devicesupport", "xcode-archives", "coresim-cache",
-    "go-build", "go-mod-cache", "cargo-registry", "cargo-git", "rustup",
-    "npm-cache", "pnpm-store", "yarn-cache", "gradle-cache", "maven-cache",
-    "swiftpm-cache", "playwright", "cypress", "brew-cache", "jetbrains", "codex",
-    "xdg-cache", "library-caches", "library-logs", "containers",
-    "orbstack", "apple-container", "claude-vm", "docker",
-    "trash", "downloads",
-    "artifact:node_modules", "artifact:target", "artifact:build", "artifact:.build",
-    "artifact:dist", "artifact:.next", "artifact:.nuxt", "artifact:.turbo",
-    "artifact:.parcel-cache", "artifact:.gradle", "artifact:.dart_tool",
-    "artifact:DerivedData", "artifact:Pods", "artifact:__pycache__",
-    "artifact:.pytest_cache", "artifact:.mypy_cache", "artifact:.ruff_cache",
-    "artifact:.venv", "artifact:venv",
+    "apple-container",
+    "arc-cache",
+    "arc-profile-cache",
+    "artifact:.build",
+    "artifact:.dart_tool",
+    "artifact:.gradle",
+    "artifact:.mypy_cache",
+    "artifact:.next",
+    "artifact:.nuxt",
+    "artifact:.parcel-cache",
+    "artifact:.pytest_cache",
+    "artifact:.ruff_cache",
+    "artifact:.turbo",
+    "artifact:.venv",
+    "artifact:DerivedData",
+    "artifact:Pods",
+    "artifact:__pycache__",
+    "artifact:build",
+    "artifact:dist",
+    "artifact:node_modules",
+    "artifact:target",
+    "artifact:venv",
+    "brave-cache",
+    "brave-profile-cache",
+    "brew-cache",
+    "bun-cache",
+    "cargo-git",
+    "cargo-registry",
+    "chrome-cache",
+    "chrome-profile-cache",
+    "claude-vm",
+    "cocoapods-cache",
+    "codex",
+    "composer-cache",
+    "containers",
+    "coresim-cache",
+    "crash-reports",
+    "cypress",
+    "deno-cache",
+    "device-firmware",
+    "discord-cache",
+    "docker",
+    "downloads",
+    "edge-cache",
+    "edge-profile-cache",
+    "firefox-cache",
+    "go-build",
+    "go-mod-cache",
+    "gradle-cache",
+    "ios-backups",
+    "jetbrains",
+    "library-caches",
+    "library-logs",
+    "mail-downloads",
+    "maven-cache",
+    "node-gyp-cache",
+    "notion-cache",
+    "npm-cache",
+    "orbstack",
+    "pip-cache",
+    "playwright",
+    "pnpm-store",
+    "poetry-cache",
+    "pub-cache",
+    "rustup",
+    "safari-cache",
+    "slack-cache",
+    "spotify-cache",
+    "swiftpm-cache",
+    "terraform-plugins",
+    "trash",
+    "vscode-cache",
+    "xcode-archives",
+    "xcode-derived",
+    "xcode-device-logs",
+    "xcode-devicesupport",
+    "xcode-doc-cache",
+    "xdg-cache",
+    "yarn-cache",
 ]
 
 @Test func catalogIDsMatchGoCLI() {
@@ -26,7 +92,7 @@ private let goRuleIDs: Set<String> = [
 }
 
 @Test func catalogRowCountsMatchGo() {
-    #expect(Catalog.presets.count == 33)
+    #expect(Catalog.presets.count == 83)
     #expect(Catalog.projectArtifacts.count == 19)
 }
 
@@ -110,4 +176,34 @@ private let goRuleIDs: Set<String> = [
         #expect(!rule.summary.isEmpty, "\(rule.id)")
         #expect(!rule.recovery.isEmpty, "\(rule.id)")
     }
+}
+
+@Test func everyPresetFindsItsLocation() async throws {
+    let home = try TemporaryHome()
+    defer { home.cleanUp() }
+    var want: [String: String] = [:]
+    for rule in Catalog.presets {
+        var relative = String(rule.pathTemplate!.dropFirst(2)).replacingOccurrences(of: "*", with: "Default")
+        if rule.expandChildren { relative += "/child-of-\(rule.id)" }
+        try home.writeFile(relative + "/data", size: 1)
+        want[home.path(relative).fileSystemPath] = rule.id
+    }
+    var configuration = ScanConfiguration(home: home.url)
+    configuration.minimumSize = 0
+    configuration.skipProjectScan = true
+    let result = await DiskScanner().collect(configuration)
+    let got = Dictionary(result.candidates.map { ($0.url.fileSystemPath, $0.rule.id) }, uniquingKeysWith: { first, _ in first })
+    for (path, id) in want {
+        #expect(got[path] == id, "\(path)")
+    }
+}
+
+@Test func catalogAreasAndDataClass() throws {
+    #expect(Catalog.areas.map(\.id).first == "xcode")
+    let derived = try #require(Catalog.presets.first { $0.id == "xcode-derived" })
+    #expect(derived.area == "xcode" && derived.rebuildable && derived.ownerName == "Xcode")
+    let backups = try #require(Catalog.presets.first { $0.id == "ios-backups" })
+    #expect(!backups.rebuildable)
+    let chrome = try #require(Catalog.presets.first { $0.id == "chrome-profile-cache" })
+    #expect(chrome.ownerBundleIDs == ["com.google.Chrome"])
 }
