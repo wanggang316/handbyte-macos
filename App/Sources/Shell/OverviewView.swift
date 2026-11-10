@@ -78,7 +78,7 @@ struct OverviewView: View {
                     .foregroundStyle(HB.Palette.textSecondary))
                     .monospacedDigit()
                     .multilineTextAlignment(.center)
-                    .contentTransition(.numericText())
+                    .hbNumericTransition()
             }
             Text(sentence(summary))
                 .font(.system(size: 14))

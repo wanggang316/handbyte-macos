@@ -99,7 +99,7 @@ private struct HistoryRow: View {
         .background(hovering ? HB.Palette.hover : .clear, in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
         .overlay(alignment: .bottom) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
         .onHover { hovering = $0 }
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
         .contextMenu {
             if item.canRestore { Button("Restore") { store.restore(item) } }
             Button("Copy Path") {

@@ -23,13 +23,13 @@ struct PillButtonStyle: ButtonStyle {
                 .frame(height: 48)
                 .background(active ? HB.Palette.inkHover : HB.Palette.ink, in: Capsule())
                 .background(Capsule().fill(HB.Palette.active).padding(active ? -4 : 0))
-                .scaleEffect(configuration.isPressed ? 0.985 : 1)
+                .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
                 .offset(y: reduceMotion ? 0 : (configuration.isPressed ? 1 : (active ? -1 : 0)))
                 .opacity(isEnabled ? 1 : 0.45)
                 .contentShape(Capsule())
                 .onHover { hovering = $0 }
-                .animation(HB.Motion.quick, value: active)
-                .animation(HB.Motion.quick, value: configuration.isPressed)
+                .hbAnimation(HB.Motion.quick, value: active)
+                .hbAnimation(HB.Motion.quick, value: configuration.isPressed)
         }
     }
 }
@@ -53,7 +53,7 @@ struct LinkButtonStyle: ButtonStyle {
                 .opacity(configuration.isPressed ? 0.7 : 1)
                 .contentShape(Rectangle())
                 .onHover { hovering = $0 }
-                .animation(HB.Motion.quick, value: hovering)
+                .hbAnimation(HB.Motion.quick, value: hovering)
         }
     }
 }
@@ -78,8 +78,8 @@ struct NavPill: View {
         }
         .buttonStyle(.plain)
         .onHover { hovering = $0 }
-        .animation(HB.Motion.quick, value: hovering)
-        .animation(HB.Motion.quick, value: isCurrent)
+        .hbAnimation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: isCurrent)
         .help(title)
         .accessibilityAddTraits(isCurrent ? .isSelected : [])
     }
@@ -145,7 +145,7 @@ struct Card<Content: View>: View {
                     in: RoundedRectangle(cornerRadius: HB.Radius.large, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: HB.Radius.large, style: .continuous))
         .onHover { hovering = $0 }
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
 
         if let action {
             Button(action: action) { body }.buttonStyle(.plain)

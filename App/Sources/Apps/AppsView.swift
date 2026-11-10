@@ -153,7 +153,7 @@ private struct AppRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { store.selectedAppID = app.id }
-        .animation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: hovering)
         .contextMenu {
             Button("Show in Finder") { store.reveal(app.url) }
             Button("Uninstall…") {
