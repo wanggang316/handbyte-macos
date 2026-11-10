@@ -7,8 +7,8 @@ source of truth, and this repository keeps byte-identical copies:
 
 | CLI | App | Content |
 |---|---|---|
-| `catalog/*.json` | `Sources/HandbyteCore/Resources/catalog/` | The cleanup rules: ID, location, category, safety tier, owner apps, summary and recovery text |
-| `testdata/conformance/` | `Tests/HandbyteCoreTests/Conformance/` | Fixture cases with the candidates that a scan must report. Run by `go test` and by `swift test`. |
+| `catalog/*.json` | `Sources/HandbyteCore/Resources/catalog/` | `cleanup.json`: the cleanup rules (ID, location with `*` wildcards, category, tier, area, data class, owner apps and processes, texts). `storage.json`: the storage categories. `apps.json`: where apps keep files and the matching rules. `system.json`: the narrow root-owned rules. |
+| `testdata/conformance/` | `Tests/HandbyteCoreTests/Conformance/` | Fixture cases: cleanup candidates, storage sizes, storage categories, app files and leftovers. Run by `go test` and by `swift test`. |
 
 `scripts/sync-check.sh` fails CI when a copy differs. It reads the CLI from
 `HANDBYTE_CLI_SRC` or downloads it at `HANDBYTE_CLI_REF` (default: `main`).
@@ -89,6 +89,11 @@ Scan-wide differences that belong to no single rule:
 | Storage engine | Implemented | Implemented | `internal/usage` and `HandbyteCore/Usage.swift`. The `usage` and `categories` conformance cases keep them equal. Both read with `readdir` and `lstat`; neither counts APFS clones once yet. |
 | Storage collector | Implemented | Implemented | Trash only, with the same lists of private and standard folders (`internal/cleaner/collect.go`, `HandbyteCore/Collector.swift`). Change both lists together. |
 | Purgeable space | Not applicable | Implemented | `statfs` has no purgeable value; the app reads it from the volume resource values. |
+| Owner check | Intentional difference | Intentional difference | The CLI checks the `processes` of a rule against `ps`; a rule without processes is shown only (inspection). The app checks the `owners` bundle IDs against the running apps; a rule without owners has no owner check. |
+| Smart Clean | Implemented | Implemented | Safe tier and eligible only, one item inside another counts once, removal by data class (`rebuildable` removed, other data to the Trash), `--trash` / "Always use the Trash". |
+| Apps | Implemented | Implemented | Inventory, file matching (`apps` conformance cases) and removal. The CLI moves through the Finder and journals one group for `handbyte restore <group>`; the app moves with the file manager and journals each item with the rule ID `app:<bundle ID>`. The app also asks LaunchServices whether a leftover's bundle ID is installed elsewhere. |
+| System rules | Implemented | Implemented | The same fixed `find` commands. The CLI runs them through `sudo`; the app through the macOS administrator dialog. |
+| Mouse support | Implemented | Not applicable | `handbyte config mouse off` turns it off in the terminal. |
 | Hard links | Intentional difference | Implemented | The CLI counts every hard link to a file, so a file with two links is counted twice. The app counts an inode once per scan, so the sum over all candidates equals the bytes a cleanup can free. `scripts/parity.sh` reports both effects as expected size differences. |
 | Operations journal | Intentional difference | Intentional difference | The CLI appends JSON Lines to `actions.jsonl` and reads it back for `restore`. The app appends tab-separated lines to `~/Library/Logs/handbyte/operations.log`, reads them back for History and records a `restored` line when it puts an item back. Neither side reads the other file. |
 | Settings file | Intentional difference | Intentional difference | The CLI stores roots and exclusions in its own `config.json`. The app stores deletion mode, minimum size, roots and exclusions in `~/Library/Application Support/Handbyte/settings.json`. Neither side reads the other file. |
