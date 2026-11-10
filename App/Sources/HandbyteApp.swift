@@ -26,6 +26,10 @@ struct HandbyteApp: App {
             ContentView()
                 .environment(store)
         }
+        // The toolbar holds the mark and the section tabs; the title would
+        // repeat the name.
+        .windowToolbarStyle(.unified(showsTitle: false))
+        .defaultSize(width: 920, height: 640)
         .commands {
             CommandGroup(after: .appInfo) {
                 CheckForUpdatesView(updater: updaterController.updater)

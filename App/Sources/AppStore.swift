@@ -30,6 +30,12 @@ final class AppStore {
     }
 
     private(set) var phase: Phase = .idle
+    /// The section the window shows. The cleanup flow keeps its phase when
+    /// the user looks at another section.
+    var section: AppSection = .overview
+    /// Capacity of the volume that holds the home folder; nil when unknown.
+    private(set) var volume: VolumeUsage?
+    private(set) var volumeName: String?
     var reviewList = ReviewList(candidates: [])
     var selection = Selection(candidates: [])
 
@@ -68,6 +74,7 @@ final class AppStore {
         journalURL = OperationsJournal.defaultURL(home: home)
         settingsStore = SettingsStore(fileURL: SettingsStore.defaultURL(home: home))
         overriddenFields = LaunchOverrides.overridden(environment: environment)
+        section = LaunchOverrides.section(environment: environment)
         fullDiskAccess = FullDiskAccess.probe(home: home)
         do {
             settings = try settingsStore.load()
@@ -119,6 +126,40 @@ final class AppStore {
         } catch {
             settingsError = "Settings could not be saved: \(error.localizedDescription)"
         }
+    }
+
+    // MARK: Overview
+
+    /// Candidates of the scan result on screen, labelled by the policy.
+    private var currentCandidates: [Candidate]? {
+        switch phase {
+        case .reviewing(let result), .confirming(let result): result.candidates
+        case .idle, .scanning, .cleaning, .report: nil
+        }
+    }
+
+    var overview: OverviewSummary {
+        OverviewSummary(candidates: currentCandidates, volume: volume)
+    }
+
+    func refreshVolume() {
+        let keys: Set<URLResourceKey> = [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey, .volumeNameKey]
+        guard let values = try? home.resourceValues(forKeys: keys),
+              let total = values.volumeTotalCapacity,
+              let available = values.volumeAvailableCapacityForImportantUsage
+        else {
+            volume = nil
+            volumeName = nil
+            return
+        }
+        volume = VolumeUsage(totalBytes: Int64(total), availableBytes: available)
+        volumeName = values.volumeName
+    }
+
+    /// The main action of the Overview: scan, and show the scan.
+    func scanFromOverview() {
+        section = .clean
+        startScan()
     }
 
     // MARK: Full Disk Access
