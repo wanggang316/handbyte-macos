@@ -8,6 +8,8 @@ private struct AppCase: Decodable {
         let bundleID: String
         let name: String
         let zap: [String]
+        let bundle: String?
+        let team: String?
     }
 
     struct Expect: Decodable, Equatable {
@@ -24,8 +26,24 @@ private struct AppCase: Decodable {
     let withData: Bool?
     let installed: [String]?
     let installedNames: [String]?
+    let otherTeams: [String]?
     let files: [String]
+    let contents: [String: String]?
+    let systemFiles: [String]?
+    let systemContents: [String: String]?
     let expect: [Expect]
+    let expectSystem: [Expect]?
+}
+
+private func makeTree(_ files: [String], _ contents: [String: String]?) throws -> TemporaryHome {
+    let home = try TemporaryHome()
+    for file in files { try home.writeFile(file, size: 1) }
+    for (file, text) in contents ?? [:] {
+        let url = home.url.appending(path: file)
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try Data(text.utf8).write(to: url)
+    }
+    return home
 }
 
 @Suite("App files")
@@ -37,21 +55,27 @@ struct AppFilesTests {
         #expect(names.count >= 4)
         for name in names {
             let value = try JSONDecoder().decode(AppCase.self, from: Data(contentsOf: directory.appending(path: name)))
-            let home = try TemporaryHome()
+            let home = try makeTree(value.files, value.contents)
             defer { home.cleanUp() }
-            for file in value.files {
-                try home.writeFile(file, size: 1)
-            }
             let prefix = home.url.fileSystemPath + "/"
             let got: [AppCase.Expect]
             if let app = value.app {
-                got = AppFiles.related(
-                    home: home.url, bundleID: app.bundleID, name: app.name, zap: app.zap,
-                    others: value.others ?? [], withData: value.withData ?? false
-                ).map {
+                let target = AppFiles.Target(
+                    bundleID: app.bundleID, name: app.name, zap: app.zap, bundle: app.bundle, team: app.team,
+                    otherTeams: value.otherTeams ?? []
+                )
+                got = AppFiles.related(home: home.url, target: target, others: value.others ?? [], withData: value.withData ?? false).map {
                     AppCase.Expect(path: String($0.url.fileSystemPath.dropFirst(prefix.count)), class: $0.fileClass,
                                    confidence: $0.confidence.rawValue, selected: $0.isSelected, bundleID: nil)
                 }
+                let root = try makeTree(value.systemFiles ?? [], value.systemContents)
+                defer { root.cleanUp() }
+                let rootPrefix = root.url.fileSystemPath + "/"
+                let system = AppFiles.system(root: root.url, target: target, others: value.others ?? []).map {
+                    AppCase.Expect(path: String($0.url.fileSystemPath.dropFirst(rootPrefix.count)), class: $0.fileClass,
+                                   confidence: $0.confidence.rawValue, selected: nil, bundleID: nil)
+                }
+                #expect(system == (value.expectSystem ?? []), "\(name): system files")
             } else {
                 got = AppFiles.leftovers(home: home.url, installed: value.installed ?? [], names: value.installedNames ?? []).map {
                     AppCase.Expect(path: String($0.url.fileSystemPath.dropFirst(prefix.count)), class: $0.fileClass,

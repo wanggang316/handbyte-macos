@@ -1,5 +1,6 @@
 import CoreServices
 import Foundation
+import Security
 
 /// The content of `apps.json`: where an app keeps its files, and the rules
 /// that keep the matching exact. The same file as `catalog/apps.json` of the
@@ -13,6 +14,12 @@ public struct AppCatalog: Sendable, Decodable {
     public let version: Int
     public let applicationRoots: [String]
     public let locations: [Location]
+    /// Places outside the home folder. Their files belong to root: they are
+    /// listed, never selected and never removed.
+    public let systemLocations: [Location]
+    /// Folders of launchd property lists. A list that names a path inside
+    /// the app bundle belongs to the app.
+    public let launchdFolders: [String]
     public let leftoverRoots: [String]
     public let genericNames: [String]
     public let protectedPrefixes: [String]
@@ -58,6 +65,11 @@ public struct InstalledApp: Sendable, Hashable, Identifiable {
     public var isRunning = false
     public let isSystem: Bool
     public let architectures: [String]
+    /// The signing team, or nil for an app without one.
+    public var team: String?
+    /// The app installs a system extension. Moving it to the Trash leaves
+    /// the extension active, so an uninstall is refused.
+    public var hasSystemExtension = false
 
     public var id: String { url.fileSystemPath }
 
@@ -138,6 +150,9 @@ public struct AppInventory: Sendable {
                     architectures: archs
                 )
                 app.lastUsed = lastUsed(url)
+                app.team = Self.signingTeam(url)
+                let extensions = url.appending(path: "Contents/Library/SystemExtensions").fileSystemPath
+                app.hasSystemExtension = !((try? FileManager.default.contentsOfDirectory(atPath: extensions)) ?? []).isEmpty
                 app.isRunning = runningApps.isRunning(bundleID: bundleID)
                 apps.append(app)
             }
@@ -150,6 +165,18 @@ public struct AppInventory: Sendable {
     public static let spotlightLastUsed: @Sendable (URL) -> Date? = { url in
         guard let item = MDItemCreateWithURL(nil, url as CFURL) else { return nil }
         return MDItemCopyAttribute(item, kMDItemLastUsedDate) as? Date
+    }
+
+    /// The team identifier of the code signature, read without a check of
+    /// the signature.
+    public static func signingTeam(_ url: URL) -> String? {
+        var code: SecStaticCode?
+        guard SecStaticCodeCreateWithPath(url as CFURL, [], &code) == errSecSuccess, let code else { return nil }
+        var info: CFDictionary?
+        guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess,
+              let dictionary = info as? [String: Any]
+        else { return nil }
+        return dictionary[kSecCodeInfoTeamIdentifier as String] as? String
     }
 
     private struct Cask {
@@ -206,16 +233,19 @@ public struct AppFile: Sendable, Hashable, Identifiable {
     /// The default choice for an uninstall.
     public var isSelected: Bool
     public let isDirectory: Bool
+    /// Outside the home folder and owned by root: listed, not removed.
+    public let isSystem: Bool
     public var size: Int64 = 0
 
     public var id: String { url.fileSystemPath }
 
-    public init(url: URL, fileClass: String, confidence: Confidence, isSelected: Bool, isDirectory: Bool) {
+    public init(url: URL, fileClass: String, confidence: Confidence, isSelected: Bool, isDirectory: Bool, isSystem: Bool = false) {
         self.url = url
         self.fileClass = fileClass
         self.confidence = confidence
         self.isSelected = isSelected
         self.isDirectory = isDirectory
+        self.isSystem = isSystem
     }
 }
 
@@ -236,21 +266,43 @@ public enum AppFiles {
         }
     }
 
+    /// The facts of an app that the matching needs. `bundle` is the path of
+    /// the .app folder; `otherTeams` are the signing teams of the other
+    /// installed apps.
+    public struct Target: Sendable {
+        public var bundleID: String
+        public var name: String
+        public var zap: [String]
+        public var bundle: String?
+        public var team: String?
+        public var otherTeams: [String]
+
+        public init(bundleID: String, name: String, zap: [String] = [], bundle: String? = nil, team: String? = nil, otherTeams: [String] = []) {
+            self.bundleID = bundleID
+            self.name = name
+            self.zap = zap
+            self.bundle = bundle
+            self.team = team
+            self.otherTeams = otherTeams
+        }
+    }
+
     /// The files of an app in the home folder, in path order. `others` are
     /// the bundle IDs of the other installed apps.
     public static func related(
         home: URL, bundleID: String, name: String, zap: [String], others: [String], withData: Bool
     ) -> [AppFile] {
+        related(home: home, target: Target(bundleID: bundleID, name: name, zap: zap), others: others, withData: withData)
+    }
+
+    public static func related(home: URL, target: Target, others: [String], withData: Bool) -> [AppFile] {
         let catalog = AppCatalog.shared
-        if catalog.isProtected(bundleID) { return [] }
-        let generic = Set(catalog.genericNames)
-        let nameOK = name.count >= 3 && !generic.contains(name.lowercased())
-        let idOK = isValidBundleID(bundleID)
+        if catalog.isProtected(target.bundleID) { return [] }
         var found: [String: AppFile] = [:]
 
         func add(_ path: String, _ fileClass: String, _ confidence: AppFile.Confidence) {
             guard let status = FileStatus(lstatPath: path), !status.isSymbolicLink else { return }
-            if belongsToOther(URL(filePath: path).lastPathComponent, own: bundleID, others: others) { return }
+            if belongsToOther(URL(filePath: path).lastPathComponent, own: target.bundleID, others: others) { return }
             if let old = found[path], old.confidence >= confidence { return }
             found[path] = AppFile(
                 url: URL(filePath: path), fileClass: fileClass, confidence: confidence,
@@ -258,11 +310,59 @@ public enum AppFiles {
             )
         }
 
-        for location in catalog.locations {
-            let template = PathTemplate.expand(location.path, home: home).fileSystemPath
+        matchLocations(catalog.locations, expand: { PathTemplate.expand($0, home: home).fileSystemPath }, target: target, add: add)
+        for folder in catalog.launchdFolders where folder.hasPrefix("~/") {
+            for path in launchdNaming(PathTemplate.expand(folder, home: home).fileSystemPath, bundle: target.bundle) {
+                add(path, "state", .high)
+            }
+        }
+        let library = home.appending(path: "Library").fileSystemPath + "/"
+        for entry in target.zap where entry.hasPrefix("~/") && !entry.contains(where: { "*?[".contains($0) }) {
+            let path = PathTemplate.expand(entry, home: home).fileSystemPath
+            guard path.hasPrefix(library) else { continue }
+            add(path, fileClass(of: path, home: home), .medium)
+        }
+        return found.values.sorted { $0.url.fileSystemPath.utf8.lexicographicallyPrecedes($1.url.fileSystemPath.utf8) }
+    }
+
+    /// The files of an app outside the home folder, below `root` ("/" on a
+    /// Mac), in path order. They are never selected: they belong to root.
+    public static func system(root: URL, target: Target, others: [String]) -> [AppFile] {
+        let catalog = AppCatalog.shared
+        if catalog.isProtected(target.bundleID) { return [] }
+        let base = root.fileSystemPath == "/" ? "" : root.fileSystemPath
+        var found: [String: AppFile] = [:]
+        func add(_ path: String, _ fileClass: String, _ confidence: AppFile.Confidence) {
+            guard let status = FileStatus(lstatPath: path), !status.isSymbolicLink,
+                  !belongsToOther(URL(filePath: path).lastPathComponent, own: target.bundleID, others: others)
+            else { return }
+            if let old = found[path], old.confidence >= confidence { return }
+            found[path] = AppFile(
+                url: URL(filePath: path), fileClass: fileClass, confidence: confidence, isSelected: false,
+                isDirectory: status.isDirectory, isSystem: true
+            )
+        }
+        matchLocations(catalog.systemLocations, expand: { base + $0 }, target: target, add: add)
+        for folder in catalog.launchdFolders where folder.hasPrefix("/") {
+            for path in launchdNaming(base + folder, bundle: target.bundle) { add(path, "state", .high) }
+        }
+        return found.values.sorted { $0.url.fileSystemPath.utf8.lexicographicallyPrecedes($1.url.fileSystemPath.utf8) }
+    }
+
+    /// Expands each location for the target: a bundle ID match is high, a
+    /// name or team match medium, a lower-case name low.
+    static func matchLocations(
+        _ locations: [AppCatalog.Location], expand: (String) -> String, target: Target,
+        add: (String, String, AppFile.Confidence) -> Void
+    ) {
+        let generic = Set(AppCatalog.shared.genericNames)
+        let name = target.name
+        let nameOK = name.count >= 3 && !generic.contains(name.lowercased())
+        for location in locations {
+            let template = expand(location.path)
             if template.contains("{bundleID}") {
-                guard idOK else { continue }
-                for path in matchSegment(template, "{bundleID}", bundleID) { add(path, location.class, .high) }
+                guard isValidBundleID(target.bundleID) else { continue }
+                for path in matchSegment(template, "{bundleID}", target.bundleID) { add(path, location.class, .high) }
             } else if template.contains("{name}") {
                 guard nameOK else { continue }
                 for path in matchSegment(template, "{name}", name) { add(path, location.class, .medium) }
@@ -270,15 +370,30 @@ public enum AppFiles {
                 let low = name.replacingOccurrences(of: " ", with: "").lowercased()
                 guard nameOK, low.count >= 3, !generic.contains(low) else { continue }
                 for path in matchSegment(template, "{lowername}", low) { add(path, location.class, .low) }
+            } else if template.contains("{team}") {
+                guard let team = target.team, team.wholeMatch(of: /[A-Z0-9]{10}/) != nil,
+                      !target.otherTeams.contains(team)
+                else { continue }
+                for path in matchSegment(template, "{team}", team) { add(path, location.class, .medium) }
             }
         }
-        let library = home.appending(path: "Library").fileSystemPath + "/"
-        for entry in zap where entry.hasPrefix("~/") && !entry.contains(where: { "*?[".contains($0) }) {
-            let path = PathTemplate.expand(entry, home: home).fileSystemPath
-            guard path.hasPrefix(library) else { continue }
-            add(path, fileClass(of: path, home: home), .medium)
+    }
+
+    /// The property lists in `folder` that name a path inside `bundle`. The
+    /// path is plain text in XML and binary property lists.
+    static func launchdNaming(_ folder: String, bundle: String?) -> [String] {
+        guard let bundle, bundle.hasSuffix(".app"),
+              let names = try? FileManager.default.contentsOfDirectory(atPath: folder)
+        else { return [] }
+        let needle = Data((bundle + "/").utf8)
+        return names.filter { $0.hasSuffix(".plist") }.map { folder + "/" + $0 }.filter { path in
+            guard let status = FileStatus(lstatPath: path), !status.isDirectory, !status.isSymbolicLink,
+                  let handle = FileHandle(forReadingAtPath: path)
+            else { return false }
+            defer { try? handle.close() }
+            let data = (try? handle.read(upToCount: 256 << 10)) ?? Data()
+            return data.range(of: needle) != nil
         }
-        return found.values.sorted { $0.url.fileSystemPath.utf8.lexicographicallyPrecedes($1.url.fileSystemPath.utf8) }
     }
 
     static func matchSegment(_ template: String, _ placeholder: String, _ value: String) -> [String] {

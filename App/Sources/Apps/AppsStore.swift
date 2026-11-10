@@ -21,6 +21,9 @@ final class AppsStore {
     var selectedLeftoverID: LeftoverGroup.ID?
     /// The files of the chosen app, with the user's choices.
     var files: [AppFile] = []
+    /// Files of the chosen app outside the home folder. They belong to root
+    /// and are listed only.
+    private(set) var systemFiles: [AppFile] = []
     private(set) var isLoadingFiles = false
     var withData = false {
         didSet { applyDataChoice() }
@@ -144,21 +147,33 @@ final class AppsStore {
 
     private func loadFiles() {
         files = []
+        systemFiles = []
+        brewResult = nil
         guard let app = selectedApp else { return }
         isLoadingFiles = true
         let home = home
-        let others = browser.apps.filter { $0.id != app.id }.map(\.bundleID)
+        let otherApps = browser.apps.filter { $0.id != app.id }
+        let others = otherApps.map(\.bundleID)
+        let target = AppFiles.Target(
+            bundleID: app.bundleID, name: app.name, zap: app.zap, bundle: app.url.fileSystemPath, team: app.team,
+            otherTeams: otherApps.compactMap(\.team)
+        )
         let withData = withData
         Task { [weak self] in
-            let found = await Task.detached {
-                var files = AppFiles.related(home: home, bundleID: app.bundleID, name: app.name, zap: app.zap, others: others, withData: withData)
+            let (found, system) = await Task.detached {
+                var files = AppFiles.related(home: home, target: target, others: others, withData: withData)
                 for index in files.indices {
                     files[index].size = await Self.size(of: files[index].url, isDirectory: files[index].isDirectory)
                 }
-                return files
+                var system = AppFiles.system(root: URL(filePath: "/"), target: target, others: others)
+                for index in system.indices {
+                    system[index].size = await Self.size(of: system[index].url, isDirectory: system[index].isDirectory)
+                }
+                return (files, system)
             }.value
             guard let self, self.selectedAppID == app.id else { return }
             self.files = found
+            self.systemFiles = system
             self.isLoadingFiles = false
         }
     }
@@ -227,6 +242,41 @@ final class AppsStore {
             case .failure(let refusal):
                 self.error = refusal.description
                 self.reviewing = nil
+            }
+        }
+    }
+
+    // MARK: Homebrew
+
+    private(set) var isRunningBrew = false
+    private(set) var brewResult: HomebrewUninstaller.Result?
+
+    var canUseBrew: Bool { HomebrewUninstaller.findBrew() != nil }
+
+    /// Runs `brew uninstall --cask` for the chosen app, after the user
+    /// confirmed it.
+    func uninstallWithHomebrew() {
+        guard let app = selectedApp, app.caskToken != nil, !isRunningBrew else { return }
+        isRunningBrew = true
+        brewResult = nil
+        let running = runningApps
+        let journal = journal
+        Task { [weak self] in
+            let outcome = await Task.detached { () -> Swift.Result<HomebrewUninstaller.Result, HomebrewUninstaller.Failure> in
+                do throws(HomebrewUninstaller.Failure) {
+                    return .success(try HomebrewUninstaller().uninstall(app, runningApps: running, journal: journal))
+                } catch {
+                    return .failure(error)
+                }
+            }.value
+            guard let self else { return }
+            self.isRunningBrew = false
+            switch outcome {
+            case .success(let result):
+                self.brewResult = result
+                if result.succeeded { self.load() }
+            case .failure(let failure):
+                self.error = failure.description
             }
         }
     }
