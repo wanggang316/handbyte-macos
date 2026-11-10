@@ -152,15 +152,22 @@ struct SettingsPolicyTests {
 
 @Suite("Clean confirmation")
 struct CleanConfirmationTests {
+    let candidate = Fixtures.candidate(path: "/Users/alice/Library/Caches/a")
+
     @Test func trashNeedsNoAcknowledgement() {
         #expect(!AppSettings.DeletionMode.trash.requiresAcknowledgement)
-        #expect(CleanConfirmation.action(for: .trash, acknowledged: false) == .trash)
-        #expect(CleanConfirmation.action(for: .trash, acknowledged: true) == .trash)
+        #expect(CleanConfirmation.actions(for: .trash, acknowledged: false)?(candidate) == .trash)
+        #expect(CleanConfirmation.actions(for: .trash, acknowledged: true)?(candidate) == .trash)
+    }
+
+    @Test func removalByDataNeedsNoAcknowledgement() {
+        #expect(!AppSettings.DeletionMode.byData.requiresAcknowledgement)
+        #expect(CleanConfirmation.actions(for: .byData, acknowledged: false)?(candidate) == .removePermanently)
     }
 
     @Test func permanentDeletionIsUnreachableWithoutAcknowledgement() {
         #expect(AppSettings.DeletionMode.removePermanently.requiresAcknowledgement)
-        #expect(CleanConfirmation.action(for: .removePermanently, acknowledged: false) == nil)
-        #expect(CleanConfirmation.action(for: .removePermanently, acknowledged: true) == .removePermanently)
+        #expect(CleanConfirmation.actions(for: .removePermanently, acknowledged: false) == nil)
+        #expect(CleanConfirmation.actions(for: .removePermanently, acknowledged: true)?(candidate) == .removePermanently)
     }
 }

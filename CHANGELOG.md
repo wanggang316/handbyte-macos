@@ -35,6 +35,16 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Changed
 
+- Clean opens Smart Clean: one screen that scans, shows what is safe to
+  clean area by area, cleans after one click and shows the freed space.
+  "Choose items" opens the full list with the safe items selected.
+- Caches, logs and build output are removed directly, because they rebuild
+  by themselves; other items go to the Trash. The setting "Always use the
+  Trash" keeps the old behavior.
+- The rule catalog has 50 more rules: browser caches for each profile, more
+  developer tools, VS Code and Electron app caches, crash reports, device
+  firmware, iOS backups and Mail downloads.
+
 - A new app icon and a new visual style: ink on paper with one green.
 - The cleanup rules come from a catalog file shared with the CLI. The
   cleanup scope is the same.

@@ -32,6 +32,18 @@ public struct Cleaner: Sendable {
         journal: (any Journal)?,
         progress: (@Sendable (CleanProgress) -> Void)? = nil
     ) async -> [CleanOutcome] {
+        await clean(candidates, actions: { _ in action }, policy: policy, journal: journal, progress: progress)
+    }
+
+    /// Like `clean(_:action:...)`, with an action for each candidate, for
+    /// removal by data class.
+    public func clean(
+        _ candidates: [Candidate],
+        actions action: @Sendable (Candidate) -> CleanAction,
+        policy: EligibilityPolicy,
+        journal: (any Journal)?,
+        progress: (@Sendable (CleanProgress) -> Void)? = nil
+    ) async -> [CleanOutcome] {
         var outcomes: [CleanOutcome] = []
         outcomes.reserveCapacity(candidates.count)
         var bytesClaimed: Int64 = 0
@@ -41,7 +53,7 @@ public struct Cleaner: Sendable {
             if Task.isCancelled {
                 outcome = CleanOutcome(candidate: candidate, status: .notAttempted, bytesClaimed: 0)
             } else {
-                outcome = apply(action, to: candidate, policy: policy, journal: journal)
+                outcome = apply(action(candidate), to: candidate, policy: policy, journal: journal)
             }
             outcomes.append(outcome)
             bytesClaimed += outcome.bytesClaimed

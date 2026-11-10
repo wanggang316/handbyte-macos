@@ -23,13 +23,15 @@ struct ConfirmSheet: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundStyle(.red)
                 }
-                Text(permanent ? "Permanently delete \(candidates.count) items?" : "Move \(candidates.count) items to the Trash?")
+                Text(permanent ? "Permanently delete \(candidates.count) items?" : "Clean \(candidates.count) items?")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(permanent ? .red : .primary)
             }
             Text(permanent
                 ? "These items are deleted without a Trash copy. There is no undo and no Put Back. Each item is checked again right before it is removed; items that changed since the scan are skipped and reported."
-                : "Each item is checked again right before it moves. Items that changed since the scan are skipped and reported. You can put items back from the Trash in Finder.")
+                : store.deletionMode == .byData
+                    ? "Caches and build output are removed; they rebuild by themselves. Other items move to the Trash. Each item is checked again right before the action; items that changed since the scan are skipped and reported."
+                    : "Each item is checked again right before it moves. Items that changed since the scan are skipped and reported. You can put items back from the Trash in Finder.")
                 .foregroundStyle(.secondary)
             List(candidates) { candidate in
                 HStack {
@@ -45,7 +47,8 @@ struct ConfirmSheet: View {
                             .truncationMode(.middle)
                     }
                     Spacer()
-                    Text(permanent ? "Delete permanently" : "Move to Trash")
+                    let removes = store.deletionMode.cleanAction(for: candidate) == .removePermanently
+                    Text(removes ? (permanent ? "Delete permanently" : "Remove, rebuilds by itself") : "Move to Trash")
                         .font(.caption)
                         .foregroundStyle(permanent ? .red : .secondary)
                     Text(ByteFormat.string(candidate.size))

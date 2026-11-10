@@ -6,7 +6,7 @@ import Observation
 /// Progress of a cleanup run: what the cleaner reported so far.
 struct CleanRun: Equatable {
     let total: Int
-    let action: CleanAction
+    let mode: AppSettings.DeletionMode
     var outcomes: [CleanOutcome] = []
     var bytesClaimed: Int64 = 0
 
@@ -33,6 +33,21 @@ final class AppStore {
     /// The section the window shows. The cleanup flow keeps its phase when
     /// the user looks at another section.
     var section: AppSection = .overview
+
+    /// How the Clean section shows the cleanup: Smart Clean on one screen, or
+    /// the full review list ("Choose items").
+    enum CleanFlow: Equatable {
+        case smart
+        case choose
+    }
+
+    private(set) var cleanFlow: CleanFlow = .smart
+    /// Free space before the last cleanup, for the result.
+    private(set) var freeBeforeClean: Int64?
+    /// The plan of the Smart Clean that runs or ran last, for its result.
+    private(set) var smartPlanInFlight: SmartCleanPlan?
+    /// When the scan on screen started, for the speed line.
+    private(set) var scanStartedAt = Date()
     /// Capacity of the volume that holds the home folder; nil when unknown.
     private(set) var volume: VolumeUsage?
     /// The Storage section has its own store; it shares the home folder.
@@ -185,6 +200,7 @@ final class AppStore {
 
     /// The main action of the Overview: scan, and show the scan.
     func scanFromOverview() {
+        cleanFlow = .smart
         section = .clean
         startScan()
     }
@@ -205,6 +221,7 @@ final class AppStore {
         guard scanTask == nil else { return }
         probeFullDiskAccess()
         scanLackedFullDiskAccess = fullDiskAccess == .denied
+        scanStartedAt = Date()
         phase = .scanning(ScanMonitor(rules: configuration.rules))
 
         // Events arrive on scanner threads; the stream keeps their order and
@@ -243,6 +260,8 @@ final class AppStore {
         let labelled = labelled(result)
         reviewList = ReviewList(candidates: labelled.candidates)
         selection = Selection(candidates: labelled.candidates)
+        // "Choose items" starts with the safe items selected.
+        if cleanFlow == .choose { selection.selectAllSafe() }
         phase = .reviewing(labelled)
     }
 
@@ -299,10 +318,57 @@ final class AppStore {
     /// Without it, permanent deletion is refused and nothing happens.
     func confirmClean(acknowledged: Bool = false) {
         guard case .confirming = phase, cleanTask == nil,
-              let action = CleanConfirmation.action(for: deletionMode, acknowledged: acknowledged)
+              let actions = CleanConfirmation.actions(for: deletionMode, acknowledged: acknowledged)
         else { return }
-        let targets = selection.selectedCandidates
-        phase = .cleaning(CleanRun(total: targets.count, action: action))
+        run(selection.selectedCandidates, mode: deletionMode, actions: actions)
+    }
+
+    // MARK: Smart Clean
+
+    /// The main action of the Overview: Smart Clean. It scans unless a result
+    /// is on screen, then waits for one confirmation on the same screen.
+    func startSmartClean() {
+        cleanFlow = .smart
+        section = .clean
+        switch phase {
+        case .reviewing, .confirming, .scanning:
+            break
+        case .idle, .cleaning, .report:
+            if !isCleaning { startScan() }
+        }
+    }
+
+    /// What Smart Clean takes from the result on screen.
+    var smartPlan: SmartCleanPlan? {
+        currentCandidates.map { SmartCleanPlan(candidates: $0) }
+    }
+
+    /// Cleans the safe items. A permanent mode in the settings needs its own
+    /// acknowledgement, so Smart Clean then removes by data class.
+    func cleanSmart() {
+        guard case .reviewing = phase, cleanTask == nil, let plan = smartPlan, !plan.selection.isEmpty else { return }
+        let mode: AppSettings.DeletionMode = deletionMode == .trash ? .trash : .byData
+        guard let actions = CleanConfirmation.actions(for: mode, acknowledged: false) else { return }
+        smartPlanInFlight = plan
+        run(plan.selection, mode: mode, actions: actions)
+    }
+
+    /// Opens the full list with the safe items selected.
+    func chooseItems() {
+        cleanFlow = .choose
+        section = .clean
+        if case .reviewing = phase {
+            selection.clear()
+            selection.selectAllSafe()
+        } else if phase == .idle {
+            startScan()
+        }
+    }
+
+    private func run(_ targets: [Candidate], mode: AppSettings.DeletionMode, actions: @escaping @Sendable (Candidate) -> CleanAction) {
+        refreshVolume()
+        freeBeforeClean = volume?.availableBytes
+        phase = .cleaning(CleanRun(total: targets.count, mode: mode))
 
         let (updates, continuation) = AsyncStream.makeStream(of: CleanProgress.self)
         let consumer = Task { [weak self] in
@@ -314,7 +380,7 @@ final class AppStore {
         let policy = policy
         let journal = OperationsJournal(fileURL: journalURL)
         cleanTask = Task { [weak self] in
-            let outcomes = await cleaner.clean(targets, action: action, policy: policy, journal: journal) {
+            let outcomes = await cleaner.clean(targets, actions: actions, policy: policy, journal: journal) {
                 continuation.yield($0)
             }
             continuation.finish()
@@ -336,6 +402,7 @@ final class AppStore {
 
     private func finishClean(_ outcomes: [CleanOutcome]) {
         cleanTask = nil
+        refreshVolume()
         phase = .report(CleanReport(outcomes: outcomes))
     }
 

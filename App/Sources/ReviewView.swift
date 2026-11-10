@@ -117,7 +117,7 @@ struct ReviewView: View {
                     .tint(.red)
                     .disabled(store.selection.selectedIDs.isEmpty)
             } else {
-                Button("Move to Trash…", action: store.requestConfirmation)
+                Button(store.deletionMode == .trash ? "Move to Trash…" : "Clean…", action: store.requestConfirmation)
                     .disabled(store.selection.selectedIDs.isEmpty)
             }
         }

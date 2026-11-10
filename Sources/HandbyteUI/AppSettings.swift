@@ -2,14 +2,18 @@ import Foundation
 import HandbyteCore
 
 /// The user's persistent choices. Defaults equal a `ScanConfiguration` with
-/// Trash deletion, so a fresh install behaves like the Go CLI.
+/// removal by data class, so a fresh install behaves like the Go CLI.
 public struct AppSettings: Sendable, Hashable, Codable {
     public enum DeletionMode: String, Sendable, Hashable, Codable, CaseIterable {
+        /// Data that rebuilds by itself is removed, everything else goes to
+        /// the Trash. The freed space is then real.
+        case byData
+        /// "Always use the Trash".
         case trash
         case removePermanently
     }
 
-    public var deletionMode: DeletionMode = .trash
+    public var deletionMode: DeletionMode = .byData
     /// Templates (`~/dev`) or absolute paths, in the order the user keeps them.
     public var projectRoots: [String] = Catalog.defaultProjectRoots
     /// Rule ids or absolute paths the policy blocks with "Excluded by user".
@@ -218,8 +222,10 @@ extension AppSettings {
 // MARK: Deletion mode
 
 extension AppSettings.DeletionMode {
-    public var cleanAction: CleanAction {
+    /// What the mode does with one candidate.
+    public func cleanAction(for candidate: Candidate) -> CleanAction {
         switch self {
+        case .byData: candidate.rule.rebuildable ? .removePermanently : .trash
         case .trash: .trash
         case .removePermanently: .removePermanently
         }
@@ -236,10 +242,12 @@ extension AppSettings.DeletionMode {
 /// `removePermanently` is produced only when the user acknowledged the
 /// distinct confirmation; otherwise the request is refused with `nil`.
 public enum CleanConfirmation {
-    public static func action(for mode: AppSettings.DeletionMode, acknowledged: Bool) -> CleanAction? {
+    public static func actions(
+        for mode: AppSettings.DeletionMode, acknowledged: Bool
+    ) -> (@Sendable (Candidate) -> CleanAction)? {
         if mode.requiresAcknowledgement, !acknowledged {
             return nil
         }
-        return mode.cleanAction
+        return { mode.cleanAction(for: $0) }
     }
 }
