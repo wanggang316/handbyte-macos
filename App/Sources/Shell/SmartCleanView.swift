@@ -104,7 +104,7 @@ struct SmartCleanView: View {
                 Hero(status: "Scan complete", live: false, value: plan.safeBytes, label: "safe to clean")
                 Text(plan.selection.isEmpty
                     ? "Nothing safe to clean was found."
-                    : "\(plan.selection.count) items in \(plan.areas.filter { $0.safeCount > 0 }.count) areas. No documents, no settings, no history.")
+                    : "\(plan.selection.count == 1 ? "1 item" : "\(plan.selection.count) items") in \(plan.areas.filter { $0.safeCount > 0 }.count == 1 ? "1 area" : "\(plan.areas.filter { $0.safeCount > 0 }.count) areas"). No documents, no settings, no history.")
                     .font(HB.Typography.body)
                     .foregroundStyle(HB.Palette.textTertiary)
             }
@@ -118,6 +118,24 @@ struct SmartCleanView: View {
                         size: area.safeCount > 0 ? ByteFormat.string(area.safeBytes) : "—"
                     )
                 }
+            }
+            if store.systemBytes > 0 || store.systemMessage != nil {
+                HStack(spacing: 12) {
+                    Image(systemName: "lock").foregroundStyle(HB.Palette.textTertiary).frame(width: 18)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Old system logs").foregroundStyle(HB.Palette.text)
+                        Text(store.systemMessage ?? "Crash reports and rotated logs of macOS. They belong to the system, so macOS asks for your password.")
+                            .font(.system(size: 11)).foregroundStyle(HB.Palette.textTertiary)
+                    }
+                    Spacer()
+                    if store.systemBytes > 0 {
+                        Text(ByteFormat.string(store.systemBytes)).monospacedDigit().foregroundStyle(HB.Palette.textSecondary)
+                        Button(store.isCleaningSystem ? "Cleaning…" : "Clean with Password…", action: store.cleanSystem)
+                            .disabled(store.isCleaningSystem)
+                    }
+                }
+                .font(HB.Typography.body)
+                .padding(.horizontal, 6)
             }
             VStack(spacing: 12) {
                 Button("Clean \(ByteFormat.string(plan.safeBytes))", action: store.cleanSmart)
