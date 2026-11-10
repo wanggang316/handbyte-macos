@@ -19,11 +19,13 @@ public struct AppSettings: Sendable, Hashable, Codable {
     /// Rule ids or absolute paths the policy blocks with "Excluded by user".
     public var exclusions: [String] = []
     public var minimumSize: Int64 = 50 * 1024 * 1024
+    /// The three lines of the first run were read.
+    public var hasSeenIntro = false
 
     public init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case deletionMode, projectRoots, exclusions, minimumSize
+        case deletionMode, projectRoots, exclusions, minimumSize, hasSeenIntro
     }
 
     /// A field missing from an older or hand-edited file keeps its default.
@@ -34,6 +36,7 @@ public struct AppSettings: Sendable, Hashable, Codable {
         projectRoots = try container.decodeIfPresent([String].self, forKey: .projectRoots) ?? defaults.projectRoots
         exclusions = try container.decodeIfPresent([String].self, forKey: .exclusions) ?? defaults.exclusions
         minimumSize = try container.decodeIfPresent(Int64.self, forKey: .minimumSize) ?? defaults.minimumSize
+        hasSeenIntro = try container.decodeIfPresent(Bool.self, forKey: .hasSeenIntro) ?? defaults.hasSeenIntro
     }
 }
 

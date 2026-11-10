@@ -9,6 +9,9 @@ struct OverviewView: View {
         let summary = store.overview
         ScrollView {
             VStack(spacing: HB.Space.section) {
+                if !store.settings.hasSeenIntro {
+                    intro
+                }
                 hero(summary)
                 if let volume = store.volume {
                     volumeSection(volume)
@@ -22,6 +25,33 @@ struct OverviewView: View {
             .frame(maxWidth: .infinity)
         }
         .onAppear(perform: store.refreshVolume)
+    }
+
+    // MARK: First run
+
+    private var intro: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("How Handbyte works").hbLabel()
+            introLine("checkmark.circle", "Clean now takes only safe items: caches, logs and build output that apps make again by themselves.")
+            introLine("tray.full", "Those are removed, so the space is free at once. Everything else, such as apps and backups, goes to the Trash.")
+            introLine("arrow.uturn.backward", "Each action is listed in History. An item in the Trash can be put back from there.")
+            HStack {
+                Spacer()
+                Button("Got It") { store.settings.hasSeenIntro = true }
+                    .buttonStyle(LinkButtonStyle())
+            }
+        }
+        .padding(16)
+        .background(HB.Palette.surface, in: RoundedRectangle(cornerRadius: HB.Radius.large, style: .continuous))
+        .transition(.opacity)
+    }
+
+    private func introLine(_ symbol: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(HB.Palette.brand).frame(width: 16)
+            Text(text).font(HB.Typography.body).foregroundStyle(HB.Palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
     }
 
     // MARK: Hero
