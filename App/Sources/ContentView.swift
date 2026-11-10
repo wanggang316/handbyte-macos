@@ -13,7 +13,11 @@ struct ContentView: View {
             case .overview:
                 OverviewView()
             case .clean:
-                cleanFlow
+                if store.cleanFlow == .smart {
+                    SmartCleanView()
+                } else {
+                    cleanFlow
+                }
             case .storage:
                 StorageView()
             case .apps, .history:

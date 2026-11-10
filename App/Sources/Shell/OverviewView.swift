@@ -55,13 +55,17 @@ struct OverviewView: View {
                 .foregroundStyle(HB.Palette.textSecondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 440)
-            Button(primaryTitle(summary), action: primaryAction(summary))
+            Button(primaryTitle(summary), action: store.startSmartClean)
                 .buttonStyle(PillButtonStyle())
                 .keyboardShortcut(.defaultAction)
                 .padding(.top, 10)
-            if summary.primaryAction == .review {
-                Button("Scan again", action: store.scanFromOverview)
+            HStack(spacing: 20) {
+                Button("Choose items", action: store.chooseItems)
                     .buttonStyle(LinkButtonStyle())
+                if summary.primaryAction == .review {
+                    Button("Scan again", action: store.scanFromOverview)
+                        .buttonStyle(LinkButtonStyle())
+                }
             }
         }
         .frame(maxWidth: .infinity)
@@ -70,22 +74,16 @@ struct OverviewView: View {
     private func sentence(_ summary: OverviewSummary) -> String {
         switch summary.primaryAction {
         case .scan:
-            "Find caches and build output that apps make again when they need them. You see each item before anything is removed."
+            "Finds the caches, logs and build data that apps make again by themselves. One confirmation, then they are cleaned."
         case .review:
-            "Caches and build output that apps make again when they need them. You choose the items in the next step."
+            "Caches and logs that apps make again when they need them. No documents, no settings, no history."
         }
     }
 
     private func primaryTitle(_ summary: OverviewSummary) -> String {
         if store.isScanning { return "Show the scan" }
-        return summary.primaryAction == .review ? "Review and clean" : "Scan now"
-    }
-
-    private func primaryAction(_ summary: OverviewSummary) -> () -> Void {
-        if store.isScanning || summary.primaryAction == .review {
-            return { store.section = .clean }
-        }
-        return store.scanFromOverview
+        if summary.primaryAction == .review, let bytes = summary.heroBytes { return "Clean \(ByteFormat.string(bytes))" }
+        return "Clean now"
     }
 
     // MARK: Volume
@@ -121,7 +119,7 @@ struct OverviewView: View {
 
     private func cards(_ summary: OverviewSummary) -> some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 220), spacing: 12, alignment: .top)], alignment: .center, spacing: 12) {
-            Card(label: "Needs your review", action: summary.reviewBytes > 0 ? { store.section = .clean } : nil) {
+            Card(label: "Needs your review", action: summary.reviewBytes > 0 ? { store.chooseItems() } : nil) {
                 cardBody(
                     value: summary.reviewBytes > 0 ? ByteFormat.string(summary.reviewBytes) : "No items",
                     text: summary.reviewBytes > 0

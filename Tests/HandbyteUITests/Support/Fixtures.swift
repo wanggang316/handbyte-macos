@@ -7,7 +7,9 @@ enum Fixtures {
         id: String = "library-caches",
         category: HandbyteCore.Category = .systemCache,
         safety: Safety = .auto,
-        summary: String = "Test rule."
+        summary: String = "Test rule.",
+        area: String = "apps",
+        rebuildable: Bool = true
     ) -> Rule {
         Rule(
             id: id,
@@ -16,7 +18,9 @@ enum Fixtures {
             safety: safety,
             ownerBundleIDs: [],
             summary: summary,
-            recovery: "Rebuilt on demand."
+            recovery: "Rebuilt on demand.",
+            area: area,
+            rebuildable: rebuildable
         )
     }
 

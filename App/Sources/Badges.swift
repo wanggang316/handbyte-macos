@@ -47,17 +47,6 @@ struct BlockedBadge: View {
     }
 }
 
-extension Eligibility {
-    var blockedReason: String? {
-        if case .blocked(let reason) = self { return reason }
-        return nil
-    }
-
-    var reviewOnlyReason: String? {
-        if case .reviewOnly(let reason) = self { return reason }
-        return nil
-    }
-}
 
 extension CategoryState {
     var label: String {

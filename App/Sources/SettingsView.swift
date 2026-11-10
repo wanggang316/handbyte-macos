@@ -37,8 +37,9 @@ private struct DeletionSection: View {
     var body: some View {
         Section {
             Picker("Deletion", selection: $settings.deletionMode) {
-                Text("Move to Trash").tag(AppSettings.DeletionMode.trash)
-                Text("Delete permanently").tag(AppSettings.DeletionMode.removePermanently)
+                Text("Remove caches, move the rest to the Trash").tag(AppSettings.DeletionMode.byData)
+                Text("Always use the Trash").tag(AppSettings.DeletionMode.trash)
+                Text("Delete everything permanently").tag(AppSettings.DeletionMode.removePermanently)
             }
             .pickerStyle(.radioGroup)
             .labelsHidden()
@@ -47,8 +48,12 @@ private struct DeletionSection: View {
                       systemImage: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
                     .font(.callout)
+            } else if settings.deletionMode == .byData {
+                Text("Caches, logs and build output rebuild by themselves, so they are removed and the space is free at once. Backups, archives and other data move to the Trash.")
+                    .foregroundStyle(.secondary)
+                    .font(.callout)
             } else {
-                Text("Items move to the Trash with Finder \"Put Back\" information.")
+                Text("Items move to the Trash with Finder \"Put Back\" information. The space is free only after you empty the Trash.")
                     .foregroundStyle(.secondary)
                     .font(.callout)
             }
