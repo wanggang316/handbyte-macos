@@ -50,6 +50,10 @@ final class AppStore {
     private(set) var smartPlanInFlight: SmartCleanPlan?
     /// When the scan on screen started, for the speed line.
     private(set) var scanStartedAt = Date()
+    /// Old system logs that need the administrator password.
+    private(set) var systemBytes: Int64 = 0
+    private(set) var systemMessage: String?
+    private(set) var isCleaningSystem = false
     /// Capacity of the volume that holds the home folder; nil when unknown.
     private(set) var volume: VolumeUsage?
     /// The Storage section has its own store; it shares the home folder.
@@ -262,6 +266,10 @@ final class AppStore {
     /// scan applies to this result.
     private func finishScan(_ result: ScanResult) {
         scanTask = nil
+        Task { [weak self] in
+            let bytes = await Task.detached { SystemRule.all.reduce(Int64(0)) { $0 + $1.measure().bytes } }.value
+            self?.systemBytes = bytes
+        }
         let labelled = labelled(result)
         reviewList = ReviewList(candidates: labelled.candidates)
         selection = Selection(candidates: labelled.candidates)
@@ -409,6 +417,37 @@ final class AppStore {
         cleanTask = nil
         refreshVolume()
         phase = .report(CleanReport(outcomes: outcomes))
+    }
+
+    // MARK: System logs
+
+    /// Runs the fixed commands of the system rules as root. macOS shows its
+    /// password dialog once; the commands are the same as in the CLI.
+    func cleanSystem() {
+        guard !isCleaningSystem else { return }
+        isCleaningSystem = true
+        systemMessage = nil
+        let script = SystemRule.all.map(\.shellCommand).joined(separator: "; ")
+        let source = "do shell script \"" + script.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\" with administrator privileges"
+        Task { [weak self] in
+            let outcome = await Task.detached { () -> (Int, String?) in
+                var error: NSDictionary?
+                let result = NSAppleScript(source: source)?.executeAndReturnError(&error)
+                if let error {
+                    return (0, error[NSAppleScript.errorMessage] as? String ?? "The command did not run.")
+                }
+                let removed = result?.stringValue?.split(separator: "\r").count ?? 0
+                return (removed, nil)
+            }.value
+            guard let self else { return }
+            self.isCleaningSystem = false
+            if let failure = outcome.1 {
+                self.systemMessage = failure
+            } else {
+                self.systemMessage = outcome.0 == 1 ? "Removed 1 file." : "Removed \(outcome.0) files."
+                self.systemBytes = 0
+            }
+        }
     }
 
     // MARK: History

@@ -31,6 +31,10 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   `~/Library/Keychains`, excluded paths and symbolic links cannot be picked,
   and a folder that a cleanup rule covers points to Clean.
 - The Overview names the purgeable part of the free space.
+- Smart Clean names the old system logs (crash reports older than 30 days,
+  rotated logs older than 7 days). Clean with Password runs fixed commands
+  as root after the macOS password dialog; they are the same as
+  `handbyte clean --system`.
 - Apps lists the installed apps with size, last use, source, version and
   architectures, with the filters All, Unused, Largest and Leftovers. The
   inspector shows the files each app keeps in ~/Library with how sure the
