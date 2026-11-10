@@ -268,8 +268,13 @@ final class AppStore {
     private func finishScan(_ result: ScanResult) {
         scanTask = nil
         Task { [weak self] in
-            let bytes = await Task.detached { SystemRule.all.reduce(Int64(0)) { $0 + $1.measure().bytes } }.value
+            let (bytes, review) = await Task.detached { () -> (Int64, [ReviewSystemRule]) in
+                let safe = SystemRule.all.filter { !$0.needsReview }.reduce(Int64(0)) { $0 + $1.measure().bytes }
+                let review = SystemRule.all.filter(\.needsReview).map { ReviewSystemRule(rule: $0, bytes: $0.measure().bytes) }
+                return (safe, review.filter { $0.bytes > 0 })
+            }.value
             self?.systemBytes = bytes
+            self?.reviewSystemRules = review
         }
         let labelled = labelled(result)
         reviewList = ReviewList(candidates: labelled.candidates)
@@ -422,13 +427,46 @@ final class AppStore {
 
     // MARK: System logs
 
-    /// Runs the fixed commands of the system rules as root. macOS shows its
-    /// password dialog once; the commands are the same as in the CLI.
+    /// System rules that need their own confirmation, such as the erase of
+    /// the unified log, with their measured size.
+    struct ReviewSystemRule: Sendable, Identifiable {
+        let rule: SystemRule
+        var bytes: Int64
+        var message: String?
+        var id: String { rule.id }
+    }
+
+    private(set) var reviewSystemRules: [ReviewSystemRule] = []
+
+    /// Runs the fixed commands of the safe system rules as root. macOS shows
+    /// its password dialog once; the commands are the same as in the CLI.
     func cleanSystem() {
-        guard !isCleaningSystem else { return }
+        runSystem(SystemRule.all.filter { !$0.needsReview }) { [weak self] removed, failure in
+            guard let self else { return }
+            if let failure {
+                self.systemMessage = failure
+            } else {
+                self.systemMessage = removed == 1 ? "Removed 1 file." : "Removed \(removed) files."
+                self.systemBytes = 0
+            }
+        }
+    }
+
+    /// Runs one review rule after the user confirmed it by name.
+    func cleanSystem(review id: String) {
+        guard let index = reviewSystemRules.firstIndex(where: { $0.id == id }) else { return }
+        runSystem([reviewSystemRules[index].rule]) { [weak self] _, failure in
+            guard let self, let index = self.reviewSystemRules.firstIndex(where: { $0.id == id }) else { return }
+            self.reviewSystemRules[index].message = failure ?? "Done."
+            if failure == nil { self.reviewSystemRules[index].bytes = 0 }
+        }
+    }
+
+    private func runSystem(_ rules: [SystemRule], done: @escaping @MainActor (Int, String?) -> Void) {
+        guard !isCleaningSystem, !rules.isEmpty else { return }
         isCleaningSystem = true
         systemMessage = nil
-        let script = SystemRule.all.map(\.shellCommand).joined(separator: "; ")
+        let script = rules.map(\.shellCommand).joined(separator: "; ")
         let source = "do shell script \"" + script.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\" with administrator privileges"
         Task { [weak self] in
             let outcome = await Task.detached { () -> (Int, String?) in
@@ -440,14 +478,8 @@ final class AppStore {
                 let removed = result?.stringValue?.split(separator: "\r").count ?? 0
                 return (removed, nil)
             }.value
-            guard let self else { return }
-            self.isCleaningSystem = false
-            if let failure = outcome.1 {
-                self.systemMessage = failure
-            } else {
-                self.systemMessage = outcome.0 == 1 ? "Removed 1 file." : "Removed \(outcome.0) files."
-                self.systemBytes = 0
-            }
+            self?.isCleaningSystem = false
+            done(outcome.0, outcome.1)
         }
     }
 

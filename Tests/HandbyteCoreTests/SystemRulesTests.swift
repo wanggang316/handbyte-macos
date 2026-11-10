@@ -24,4 +24,18 @@ struct SystemRulesTests {
         #expect(result.bytes >= 10_000)
         #expect(!result.partial)
     }
+
+    @Test func theUnifiedLogRuleNeedsReviewAndRunsTheFixedCommand() throws {
+        let rule = try #require(SystemRule.all.first { $0.id == "system-unified-log" })
+        #expect(rule.needsReview)
+        #expect(rule.shellCommand == "'/usr/bin/log' 'erase' '--all'")
+        #expect(SystemRule.all.filter { !$0.needsReview }.allSatisfy { $0.command == nil && !$0.names.isEmpty })
+        let home = try TemporaryHome()
+        defer { home.cleanUp() }
+        try home.writeFile("db/Persist/a.tracev3", size: 5000)
+        try home.writeFile("db/Special/b.tracev3", size: 5000)
+        let measured = rule.measure(root: home.path("db").fileSystemPath)
+        #expect(measured.files == 2)
+        #expect(measured.bytes >= 10000)
+    }
 }
