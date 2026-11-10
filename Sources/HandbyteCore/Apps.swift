@@ -61,6 +61,21 @@ public struct InstalledApp: Sendable, Hashable, Identifiable {
 
     public var id: String { url.fileSystemPath }
 
+    public init(
+        url: URL, name: String, bundleID: String, version: String?, source: Source, caskToken: String?,
+        zap: [String], isSystem: Bool, architectures: [String]
+    ) {
+        self.url = url
+        self.name = name
+        self.bundleID = bundleID
+        self.version = version
+        self.source = source
+        self.caskToken = caskToken
+        self.zap = zap
+        self.isSystem = isSystem
+        self.architectures = architectures
+    }
+
     /// Not opened for six months. An app without a known date is not unused.
     public func isUnused(now: Date) -> Bool {
         guard let lastUsed else { return false }
@@ -194,6 +209,14 @@ public struct AppFile: Sendable, Hashable, Identifiable {
     public var size: Int64 = 0
 
     public var id: String { url.fileSystemPath }
+
+    public init(url: URL, fileClass: String, confidence: Confidence, isSelected: Bool, isDirectory: Bool) {
+        self.url = url
+        self.fileClass = fileClass
+        self.confidence = confidence
+        self.isSelected = isSelected
+        self.isDirectory = isDirectory
+    }
 }
 
 /// Finds the files of an app and the data of apps that are gone, by the
@@ -306,6 +329,13 @@ public enum AppFiles {
         public let isDirectory: Bool
         public var size: Int64 = 0
         public var id: String { url.fileSystemPath }
+
+        public init(url: URL, bundleID: String, fileClass: String, isDirectory: Bool) {
+            self.url = url
+            self.bundleID = bundleID
+            self.fileClass = fileClass
+            self.isDirectory = isDirectory
+        }
     }
 
     private static func vendor(_ id: String) -> String {

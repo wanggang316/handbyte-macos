@@ -23,7 +23,7 @@ struct ContentView: View {
             case .history:
                 HistoryView()
             case .apps:
-                PlannedView(section: store.section)
+                AppsView()
             }
         }
         .frame(minWidth: 760, minHeight: 520)

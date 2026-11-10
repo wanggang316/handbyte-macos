@@ -18,10 +18,8 @@ struct OverviewTests {
 
     @Test func sectionsAreInTopBarOrderAndOnlyBuiltOnesOpen() {
         #expect(AppSection.allCases.map(\.title) == ["Overview", "Clean", "Apps", "Storage", "History"])
-        #expect(AppSection.allCases.filter(\.isAvailable) == [.overview, .clean, .storage, .history])
-        for section in AppSection.allCases where !section.isAvailable {
-            #expect(!section.plannedSummary.isEmpty, "\(section)")
-        }
+        #expect(AppSection.allCases.allSatisfy(\.isAvailable))
+
     }
 
     @Test func volumeUsageGivesTheUsedFraction() {

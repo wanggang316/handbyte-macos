@@ -31,6 +31,14 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
   `~/Library/Keychains`, excluded paths and symbolic links cannot be picked,
   and a folder that a cleanup rule covers points to Clean.
 - The Overview names the purgeable part of the free space.
+- Apps lists the installed apps with size, last use, source, version and
+  architectures, with the filters All, Unused, Largest and Leftovers. The
+  inspector shows the files each app keeps in ~/Library with how sure the
+  match is; caches, logs and state are selected, the app's data only on
+  request. Uninstall moves the app and the selected files to the Trash;
+  Remove Files Only keeps the app. Apps of macOS, apps from Homebrew and
+  running apps are refused with the reason. Leftovers lists data of removed
+  apps for review; nothing in it is selected.
 - History lists each item that was removed or moved to the Trash, newest
   first. An item in the Trash can be put back with Restore; it never
   replaces anything at the original place.
