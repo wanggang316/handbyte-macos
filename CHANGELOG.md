@@ -48,8 +48,10 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 - On the first run the Overview explains in three lines what Clean Now
   takes, what goes to the Trash and where History is.
 - History lists each item that was removed or moved to the Trash, newest
-  first. An item in the Trash can be put back with Restore; it never
-  replaces anything at the original place.
+  first, by the app and by the CLI. An item in the Trash can be put back
+  with Restore; it never replaces anything at the original place and checks
+  that the Trash item is the one that was moved. One Restore puts back an
+  uninstalled app with its files.
 
 ### Changed
 
@@ -66,6 +68,9 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 - A new app icon and a new visual style: ink on paper with one green.
 - The cleanup rules come from a catalog file shared with the CLI. The
   cleanup scope is the same.
+- The app and the CLI write one journal,
+  `~/Library/Application Support/handbyte/actions.jsonl`. The old
+  `~/Library/Logs/handbyte/operations.log` is still shown in History.
 
 ### Deprecated
 

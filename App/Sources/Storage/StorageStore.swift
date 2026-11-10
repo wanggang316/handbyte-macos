@@ -46,7 +46,7 @@ final class StorageStore {
     /// the exclusions of the settings.
     var collectPolicy: CollectPolicy
     /// Where the moves of collected items are recorded.
-    var journalURL: URL?
+    var journal: OperationsJournal?
 
     /// Items picked for the Trash, in the order of picking.
     private(set) var collected: [CollectedItem] = []
@@ -207,7 +207,7 @@ final class StorageStore {
         isMovingCollection = true
         let items = collected
         let policy = collectPolicy
-        let journal = journalURL.map { OperationsJournal(fileURL: $0) }
+        let journal = journal
         Task.detached { [weak self] in
             let outcomes = Collector().collect(items, policy: policy, journal: journal)
             await self?.finishMove(outcomes)

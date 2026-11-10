@@ -85,7 +85,8 @@ final class AppStore {
     private(set) var scanLackedFullDiskAccess = false
 
     let home: URL
-    let journalURL: URL
+    let journal: OperationsJournal
+    var journalURL: URL { journal.fileURL }
     private let settingsStore: SettingsStore
     private let environment: [String: String]
 
@@ -97,9 +98,9 @@ final class AppStore {
     init(environment: [String: String] = ProcessInfo.processInfo.environment) {
         home = LaunchOverrides.home(environment: environment)
         self.environment = environment
-        journalURL = OperationsJournal.defaultURL(home: home)
+        journal = OperationsJournal.standard(home: home)
         storage = StorageStore(root: home, summaries: UsageSummaryStore(fileURL: UsageSummaryStore.defaultURL(home: home)))
-        apps = AppsStore(home: home, journalURL: journalURL)
+        apps = AppsStore(home: home, journal: journal)
         settingsStore = SettingsStore(fileURL: SettingsStore.defaultURL(home: home))
         overriddenFields = LaunchOverrides.overridden(environment: environment)
         section = LaunchOverrides.section(environment: environment)
@@ -112,7 +113,7 @@ final class AppStore {
         }
         updateStorageHints()
         storage.openClean = { [weak self] in self?.openCleanFromStorage() }
-        storage.journalURL = journalURL
+        storage.journal = journal
     }
 
     /// AppSettings plus the launch overrides, which win when set.
@@ -391,7 +392,7 @@ final class AppStore {
         }
         let cleaner = cleaner
         let policy = policy
-        let journal = OperationsJournal(fileURL: journalURL)
+        let journal = journal
         cleanTask = Task { [weak self] in
             let outcomes = await cleaner.clean(targets, actions: actions, policy: policy, journal: journal) {
                 continuation.yield($0)
@@ -457,7 +458,7 @@ final class AppStore {
 
     func reloadHistory() {
         do {
-            history = HistoryList(entries: try OperationsJournal(fileURL: journalURL).entries())
+            history = HistoryList(entries: try journal.entries())
             historyError = nil
         } catch {
             historyError = "The operations log could not be read: \(error.localizedDescription)"
@@ -465,13 +466,11 @@ final class AppStore {
     }
 
     func restore(_ item: HistoryList.Item) {
-        let journal = OperationsJournal(fileURL: journalURL)
-        do {
-            try Restorer().restore(item.entry, journal: journal)
-            historyError = nil
-        } catch {
-            historyError = "\(URL(filePath: item.entry.path).lastPathComponent): \(error.description)"
-        }
+        let all = history.items.map(\.entry)
+        let refusals = Restorer().restoreGroup(of: item.entry, in: all, journal: journal)
+        historyError = refusals.isEmpty ? nil : refusals
+            .map { "\(URL(filePath: $0.path).lastPathComponent): \($0.refusal.description)" }
+            .joined(separator: "\n")
         reloadHistory()
     }
 

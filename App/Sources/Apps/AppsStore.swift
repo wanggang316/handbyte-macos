@@ -46,13 +46,13 @@ final class AppsStore {
     }
 
     let home: URL
-    let journalURL: URL
+    let journal: OperationsJournal
     private let runningApps = WorkspaceRunningAppsProbe()
     private var loadTask: Task<Void, Never>?
 
-    init(home: URL, journalURL: URL) {
+    init(home: URL, journal: OperationsJournal) {
         self.home = home
-        self.journalURL = journalURL
+        self.journal = journal
     }
 
     var inventory: AppInventory { AppInventory(home: home, runningApps: runningApps) }
@@ -209,8 +209,8 @@ final class AppsStore {
         }
         isRemoving = true
         let roots = roots
-        let journal = OperationsJournal(fileURL: journalURL)
         let running = runningApps
+        let journal = journal
         Task { [weak self] in
             let outcome = await Task.detached { () -> Swift.Result<[AppRemover.Outcome], AppRemover.Refusal> in
                 do throws(AppRemover.Refusal) {
