@@ -84,12 +84,10 @@ private struct HistoryRow: View {
             }
             Spacer(minLength: 12)
             if item.canRestore {
-                Button(restoreTitle) { store.restore(item) }
+                Button("Restore") { store.restore(item) }
                     .buttonStyle(LinkButtonStyle())
                     .opacity(hovering ? 1 : 0.6)
-                    .help(item.restoreCount > 1
-                        ? "Put back the app and its files that went to the Trash together"
-                        : "Put the item back from the Trash to \(entry.path)")
+                    .help("Put the item back from the Trash to \(entry.path)")
             }
             Text(entry.outcome == .failed ? "—" : ByteFormat.string(entry.bytes))
                 .monospacedDigit()
@@ -104,17 +102,13 @@ private struct HistoryRow: View {
         .onHover { hovering = $0 }
         .hbAnimation(HB.Motion.quick, value: hovering)
         .contextMenu {
-            if item.canRestore { Button(restoreTitle) { store.restore(item) } }
+            if item.canRestore { Button("Restore") { store.restore(item) } }
             Button("Copy Path") {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(entry.path, forType: .string)
             }
         }
         .accessibilityElement(children: .combine)
-    }
-
-    private var restoreTitle: String {
-        item.restoreCount > 1 ? "Restore \(item.restoreCount) Items" : "Restore"
     }
 
     private var status: String {
