@@ -20,6 +20,10 @@ public struct UsageNode: Sendable, Hashable {
     /// This directory, or one below it, could not be read in full. The
     /// sizes are then a lower bound.
     public var incomplete = false
+    /// This file, or one below this directory, is a partial APFS clone. It
+    /// counts in full, so the sizes can be larger than the space that a
+    /// deletion frees.
+    public var mayShare = false
     /// Why a directory was not entered: another volume, or content that is
     /// not on this Mac.
     public var skipped: String?
@@ -34,8 +38,9 @@ public struct UsageNode: Sendable, Hashable {
 /// One entry of the list of largest files.
 public struct UsageFile: Sendable, Hashable {
     public let path: String
-    public let allocatedBytes: Int64
+    public var allocatedBytes: Int64
     public let logicalBytes: Int64
+    public var mayShare = false
 }
 
 /// A snapshot of a running scan.
@@ -154,13 +159,6 @@ func usageOrder(_ lhs: UsageNode, _ rhs: UsageNode) -> Bool {
     return lhs.name.utf8.lexicographicallyPrecedes(rhs.name.utf8)
 }
 
-private struct UsageEntry {
-    let name: String
-    let status: stat
-    var isDirectory: Bool { status.st_mode & S_IFMT == S_IFDIR }
-    var isRegular: Bool { status.st_mode & S_IFMT == S_IFREG }
-}
-
 /// The shared state of one scan.
 private final class UsageRun: Sendable {
     private struct State {
@@ -170,6 +168,8 @@ private final class UsageRun: Sendable {
         var top: [UsageProgress.Top] = []
         var topIndex: [String: Int] = [:]
         var links: Set<FileIdentity> = []
+        /// Device and clone ID of each full clone.
+        var clones: Set<FileIdentity> = []
         var largest: [UsageFile] = []
         var freeSlots: Int
     }
@@ -206,7 +206,7 @@ private final class UsageRun: Sendable {
     }
 
     func walkRoot() async -> UsageNode {
-        let (entries, _) = Self.read(rootPath)
+        let (entries, _) = UsageEntry.list(rootPath)
         state.withLock { state in
             state.top = entries.map {
                 UsageProgress.Top(name: $0.name, isDirectory: $0.isDirectory, allocatedBytes: 0, done: false)
@@ -220,31 +220,6 @@ private final class UsageRun: Sendable {
         return node
     }
 
-    /// Lists a directory in byte order of the names. Returns the entries it
-    /// could read and the first error.
-    private static func read(_ path: String) -> ([UsageEntry], String?) {
-        guard let directory = opendir(path) else {
-            return ([], String(cString: strerror(errno)))
-        }
-        defer { closedir(directory) }
-        var entries: [UsageEntry] = []
-        var failure: String?
-        while let entry = readdir(directory) {
-            let name = withUnsafePointer(to: &entry.pointee.d_name) {
-                $0.withMemoryRebound(to: CChar.self, capacity: Int(entry.pointee.d_namlen) + 1) { String(cString: $0) }
-            }
-            if name == "." || name == ".." { continue }
-            var status = stat()
-            if lstat(path == "/" ? "/" + name : path + "/" + name, &status) != 0 {
-                if errno != ENOENT, failure == nil { failure = String(cString: strerror(errno)) }
-                continue
-            }
-            entries.append(UsageEntry(name: name, status: status))
-        }
-        entries.sort { $0.name.utf8.lexicographicallyPrecedes($1.name.utf8) }
-        return (entries, failure)
-    }
-
     /// Fills a node from the directory at `path`. `top` is nil only for the
     /// root, where each child gets its own running total; below the root all
     /// sizes go to the total of the top-level entry.
@@ -254,13 +229,13 @@ private final class UsageRun: Sendable {
             node.incomplete = true
             return node
         }
-        let (entries, failure) = Self.read(path)
+        let (entries, failure) = UsageEntry.list(path)
         if let failure {
             node.incomplete = true
             node.error = failure
         }
 
-        var candidates: [(node: UsageNode, file: UsageFile, bucket: Int?, linked: FileIdentity?)] = []
+        var candidates: [(node: UsageNode, file: UsageFile, bucket: Int?, linked: FileIdentity?, clone: FileIdentity?)] = []
         var directories: [UsageNode] = []
         var finished: [Int] = []
         var pending: [(index: Int, path: String, top: Int?)] = []
@@ -272,13 +247,16 @@ private final class UsageRun: Sendable {
             if !entry.isDirectory {
                 var file = UsageNode(name: entry.name, isDirectory: false)
                 file.fileCount = 1
-                file.logicalBytes = Int64(entry.status.st_size)
-                file.allocatedBytes = Int64(entry.status.st_blocks) * 512
+                file.logicalBytes = entry.logicalBytes
+                file.allocatedBytes = entry.allocatedBytes
+                let cloned = entry.isRegular && entry.allocatedBytes > 0
+                file.mayShare = cloned && entry.clone.partial
                 candidates.append((
                     file,
-                    UsageFile(path: full, allocatedBytes: file.allocatedBytes, logicalBytes: file.logicalBytes),
+                    UsageFile(path: full, allocatedBytes: file.allocatedBytes, logicalBytes: file.logicalBytes, mayShare: file.mayShare),
                     bucket,
-                    entry.isRegular && entry.status.st_nlink > 1 ? FileIdentity(entry.status) : nil
+                    entry.isRegular && entry.links > 1 ? entry.identity : nil,
+                    cloned && entry.clone.full ? FileIdentity(dev: entry.identity.dev, ino: entry.clone.id) : nil
                 ))
                 if !entry.isRegular { candidates[candidates.count - 1].file = UsageFile(path: "", allocatedBytes: 0, logicalBytes: 0) }
                 if top == nil, let bucket { finished.append(bucket) }
@@ -287,9 +265,9 @@ private final class UsageRun: Sendable {
             var child = UsageNode(name: entry.name, isDirectory: true)
             if full == skipPath {
                 child.skipped = "other volumes"
-            } else if !devices.contains(entry.status.st_dev) {
+            } else if !devices.contains(entry.device) {
                 child.skipped = "another volume"
-            } else if entry.status.st_flags & UInt32(SF_DATALESS) != 0 {
+            } else if entry.flags & UInt32(SF_DATALESS) != 0 {
                 child.skipped = "not on this Mac"
             }
             if child.skipped == nil {
@@ -301,15 +279,21 @@ private final class UsageRun: Sendable {
         }
 
         // One lock for the whole directory: the totals, the files with
-        // several names, and the list of largest files. A file with more
-        // than one name counts once for the scan.
+        // several names, the clones, and the list of largest files. A file
+        // with more than one name counts once for the scan. Full APFS clones
+        // share all their blocks, so the space counts once for each clone
+        // ID; the other clones count with no allocated size.
         let limit = options.largestFiles
         var files: [UsageNode] = state.withLock { [candidates, finished] state in
             state.currentPath = path
             var counted: [UsageNode] = []
             counted.reserveCapacity(candidates.count)
-            for candidate in candidates {
+            for var candidate in candidates {
                 if let identity = candidate.linked, !state.links.insert(identity).inserted { continue }
+                if let clone = candidate.clone, !state.clones.insert(clone).inserted {
+                    candidate.node.allocatedBytes = 0
+                    candidate.file.allocatedBytes = 0
+                }
                 counted.append(candidate.node)
                 state.fileCount += 1
                 state.allocatedBytes += candidate.node.allocatedBytes
@@ -369,12 +353,14 @@ private final class UsageRun: Sendable {
             node.logicalBytes += child.logicalBytes
             node.fileCount += child.fileCount
             node.incomplete = node.incomplete || child.incomplete
+            node.mayShare = node.mayShare || child.mayShare
         }
         files.sort(by: usageOrder)
         for (index, file) in files.enumerated() {
             node.allocatedBytes += file.allocatedBytes
             node.logicalBytes += file.logicalBytes
             node.fileCount += 1
+            node.mayShare = node.mayShare || file.mayShare
             if index < options.filesPerDirectory {
                 directories.append(file)
             } else {

@@ -58,6 +58,16 @@ final class TemporaryHome: @unchecked Sendable {
         try fileManager.linkItem(at: url.appending(path: target), to: link)
     }
 
+    /// Makes an APFS clone of `target`. Returns false when the volume
+    /// cannot clone.
+    func clone(_ relative: String, of target: String) throws -> Bool {
+        let copy = url.appending(path: relative, directoryHint: .notDirectory)
+        try fileManager.createDirectory(at: copy.deletingLastPathComponent(), withIntermediateDirectories: true)
+        if clonefile(url.appending(path: target).path, copy.path, 0) == 0 { return true }
+        if errno == ENOTSUP { return false }
+        throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+    }
+
     func symlink(_ relative: String, to target: String) throws {
         try fileManager.createSymbolicLink(
             at: url.appending(path: relative),

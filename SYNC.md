@@ -86,7 +86,7 @@ Scan-wide differences that belong to no single rule:
 | Behaviour | CLI | App | Note |
 |---|---|---|---|
 | Project evidence | Implemented | Pending | The CLI reports build output only when a marker file of the matching ecosystem (for example `package.json` for `node_modules`) is at the nearest project boundary. The app reports each directory with a matching name. The conformance cases contain only projects with a marker. |
-| Storage engine | Implemented | Implemented | `internal/usage` and `HandbyteCore/Usage.swift`. The `usage` and `categories` conformance cases keep them equal. Both read with `readdir` and `lstat`; neither counts APFS clones once yet. |
+| Storage engine | Implemented | Implemented | `internal/usage` and `HandbyteCore/Usage.swift`. The `usage` and `categories` conformance cases keep them equal. Both read each directory with `getattrlistbulk` (`lstat` for mount points, firmlinks and failed entries). Both count a full APFS clone once for each device and clone ID, and count a partial clone in full with the may-share mark. |
 | Storage collector | Implemented | Implemented | Trash only, with the same lists of private and standard folders (`internal/cleaner/collect.go`, `HandbyteCore/Collector.swift`). Change both lists together. |
 | Purgeable space | Not applicable | Implemented | `statfs` has no purgeable value; the app reads it from the volume resource values. |
 | Owner check | Intentional difference | Intentional difference | The CLI checks the `processes` of a rule against `ps`; a rule without processes is shown only (inspection). The app checks the `owners` bundle IDs against the running apps; a rule without owners has no owner check. |
