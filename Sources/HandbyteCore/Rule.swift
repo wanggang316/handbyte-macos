@@ -82,6 +82,13 @@ public struct Rule: Sendable, Hashable, Codable {
     public let summary: String
     /// What happens after removal and how the data comes back.
     public let recovery: String
+    /// The area that groups the rule on the first screen of a cleanup.
+    public let area: String
+    /// Data that its owner makes again. It is removed directly; other data
+    /// goes to the Trash.
+    public let rebuildable: Bool
+    /// The program that makes the data, for the screen.
+    public let ownerName: String?
 
     public init(
         id: String,
@@ -90,7 +97,10 @@ public struct Rule: Sendable, Hashable, Codable {
         safety: Safety,
         ownerBundleIDs: [String],
         summary: String,
-        recovery: String
+        recovery: String,
+        area: String = "files",
+        rebuildable: Bool = false,
+        ownerName: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -99,6 +109,9 @@ public struct Rule: Sendable, Hashable, Codable {
         self.ownerBundleIDs = ownerBundleIDs
         self.summary = summary
         self.recovery = recovery
+        self.area = area
+        self.rebuildable = rebuildable
+        self.ownerName = ownerName
     }
 
     public var pathTemplate: String? {
@@ -116,9 +129,37 @@ public struct Rule: Sendable, Hashable, Codable {
         return nil
     }
 
-    /// The preset location under `home`; nil for project artifact rules, which
-    /// have no fixed location.
+    /// The preset location under `home`, as a template; nil for project
+    /// artifact rules, which have no fixed location. A segment `*` stands for
+    /// each directory at that place.
     public func location(in home: URL) -> URL? {
         pathTemplate.map { PathTemplate.expand($0, home: home) }
+    }
+
+    /// The directories that the preset names under `home`, in name order. A
+    /// wildcard does not match a name that starts with a dot or a symbolic
+    /// link, so a rule never reaches outside its tree.
+    public func locations(in home: URL) -> [URL] {
+        guard let template = location(in: home) else { return [] }
+        var paths = ["/"]
+        for segment in template.fileSystemPath.split(separator: "/").map(String.init) {
+            var next: [String] = []
+            for base in paths {
+                let joined = base == "/" ? "/" + segment : base + "/" + segment
+                guard segment == "*" else {
+                    next.append(joined)
+                    continue
+                }
+                let names = (try? FileManager.default.contentsOfDirectory(atPath: base)) ?? []
+                for name in names.sorted() where !name.hasPrefix(".") {
+                    let child = base == "/" ? "/" + name : base + "/" + name
+                    if FileStatus(lstatPath: child)?.isDirectory == true {
+                        next.append(child)
+                    }
+                }
+            }
+            paths = next
+        }
+        return paths.map { URL(filePath: $0, directoryHint: .isDirectory) }
     }
 }

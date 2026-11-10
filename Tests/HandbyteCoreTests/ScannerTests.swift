@@ -63,13 +63,24 @@ private func configuration(
     let home = try TemporaryHome()
     defer { home.cleanUp() }
     try home.writeFile("Library/Caches/go-build/00/obj", size: 10)
-    try home.writeFile("Library/Caches/Google/Chrome/blob", size: 10)
+    try home.writeFile("Library/Caches/com.example.app/blob", size: 10)
 
     let result = await DiskScanner().collect(configuration(home))
 
     #expect(result.candidates.count == 2)
     let byPath = Dictionary(uniqueKeysWithValues: result.candidates.map { ($0.url.lastPathComponent, $0.rule.id) })
-    #expect(byPath == ["go-build": "go-build", "Google": "library-caches"])
+    #expect(byPath == ["go-build": "go-build", "com.example.app": "library-caches"])
+}
+
+@Test func aLocationThatHoldsAMoreSpecificRuleIsNotReported() async throws {
+    let home = try TemporaryHome()
+    defer { home.cleanUp() }
+    try home.writeFile("Library/Caches/Google/Chrome/Default/Cache/blob", size: 10)
+    try home.writeFile("Library/Caches/Google/Other/blob", size: 10)
+
+    let result = await DiskScanner().collect(configuration(home))
+
+    #expect(result.candidates.map(\.rule.id) == ["chrome-cache"])
 }
 
 @Test func expandChildrenYieldsOneCandidatePerChildDirectory() async throws {

@@ -15,6 +15,7 @@ private struct CleanupCase: Decodable {
         let rule: String
         let category: String
         let safety: String
+        let area: String
     }
 
     let name: String
@@ -54,10 +55,10 @@ private func cleanupCases() throws -> [(file: String, value: CleanupCase)] {
         let prefix = home.url.path.hasSuffix("/") ? home.url.path : home.url.path + "/"
         let got = result.candidates.map { candidate in
             let relative = String(candidate.url.path.dropFirst(prefix.count))
-            return [relative, candidate.rule.id, candidate.rule.category.catalogID, candidate.rule.safety.catalogName]
+            return [relative, candidate.rule.id, candidate.rule.category.catalogID, candidate.rule.safety.catalogName, candidate.rule.area]
                 .joined(separator: " | ")
         }
-        let want = value.expect.map { [$0.path, $0.rule, $0.category, $0.safety].joined(separator: " | ") }
+        let want = value.expect.map { [$0.path, $0.rule, $0.category, $0.safety, $0.area].joined(separator: " | ") }
         #expect(got.sorted() == want.sorted(), "\(file): \(value.name)")
     }
 }

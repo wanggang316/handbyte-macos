@@ -99,7 +99,7 @@ private struct ScanRun {
 
         var tasks = expandPresets()
         tasks += discoverProjectArtifacts()
-        tasks = deduplicate(tasks)
+        tasks = Self.withoutOuterPresets(deduplicate(tasks))
 
         for task in tasks {
             categories[task.rule.category]?.remaining += 1
@@ -137,14 +137,13 @@ private struct ScanRun {
     private mutating func expandPresets() -> [SizingTask] {
         var tasks: [SizingTask] = []
         for rule in rules {
-            guard let location = rule.location(in: configuration.home),
-                  let status = FileStatus(lstatPath: location.fileSystemPath),
-                  status.isDirectory
-            else { continue }
-            if rule.expandChildren {
-                tasks += expandChildren(of: location, rule: rule)
-            } else {
-                tasks.append(SizingTask(rule: rule, url: location, identity: status.identity))
+            for location in rule.locations(in: configuration.home) {
+                guard let status = FileStatus(lstatPath: location.fileSystemPath), status.isDirectory else { continue }
+                if rule.expandChildren {
+                    tasks += expandChildren(of: location, rule: rule)
+                } else {
+                    tasks.append(SizingTask(rule: rule, url: location, identity: status.identity))
+                }
             }
         }
         return tasks
@@ -199,6 +198,20 @@ private struct ScanRun {
             }
         }
         return tasks
+    }
+
+    /// Drops a preset location that holds the location of another preset. The
+    /// inner rule names its owner and its cost exactly; the outer location,
+    /// often a child of ~/Library/Caches, would also take the inner data with
+    /// a weaker check. The rest of the outer location stays. The same rule as
+    /// `withoutOuterPresets` of the Go CLI.
+    static func withoutOuterPresets(_ tasks: [SizingTask]) -> [SizingTask] {
+        let presets = tasks.filter { $0.rule.pathTemplate != nil }.map { $0.url.fileSystemPath }
+        return tasks.filter { task in
+            guard task.rule.pathTemplate != nil else { return true }
+            let path = task.url.fileSystemPath
+            return !presets.contains { $0 != path && UsageCategories.isBelow($0, path) }
+        }
     }
 
     /// Keeps one task per directory identity. Earlier tasks win ties, so the
