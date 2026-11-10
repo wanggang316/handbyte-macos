@@ -128,7 +128,10 @@ struct OverviewView: View {
                 )
             }
             Card(label: "Apps", action: { store.section = .apps }) {
-                cardBody(value: "Planned", text: "App sizes, last use and uninstall with leftovers.")
+                cardBody(
+                    value: store.apps.hasLoaded ? "\(store.apps.browser.apps.count) apps" : "Apps",
+                    text: "Size and last use of each app. Uninstall an app with the files it keeps."
+                )
             }
             Card(label: "Storage", action: { store.section = .storage }) {
                 cardBody(

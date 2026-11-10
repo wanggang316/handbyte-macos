@@ -52,6 +52,8 @@ final class AppStore {
     private(set) var volume: VolumeUsage?
     /// The Storage section has its own store; it shares the home folder.
     let storage: StorageStore
+    /// The Apps section has its own store.
+    let apps: AppsStore
     private(set) var volumeName: String?
     var reviewList = ReviewList(candidates: [])
     var selection = Selection(candidates: [])
@@ -91,6 +93,7 @@ final class AppStore {
         self.environment = environment
         journalURL = OperationsJournal.defaultURL(home: home)
         storage = StorageStore(root: home, summaries: UsageSummaryStore(fileURL: UsageSummaryStore.defaultURL(home: home)))
+        apps = AppsStore(home: home, journalURL: journalURL)
         settingsStore = SettingsStore(fileURL: SettingsStore.defaultURL(home: home))
         overriddenFields = LaunchOverrides.overridden(environment: environment)
         section = LaunchOverrides.section(environment: environment)

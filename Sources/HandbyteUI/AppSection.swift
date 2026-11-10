@@ -24,16 +24,14 @@ public enum AppSection: String, Sendable, CaseIterable, Identifiable {
     /// shows it, and it opens a short description in place of a screen.
     public var isAvailable: Bool {
         switch self {
-        case .overview, .clean, .storage, .history: true
-        case .apps: false
+        case .overview, .clean, .storage, .history, .apps: true
         }
     }
 
     /// What a planned section will do. Empty for a section that is built.
     public var plannedSummary: String {
         switch self {
-        case .overview, .clean, .storage, .history: ""
-        case .apps: "See what each app uses and when you last opened it. Uninstall an app together with the files it left."
+        case .overview, .clean, .storage, .history, .apps: ""
         }
     }
 }
