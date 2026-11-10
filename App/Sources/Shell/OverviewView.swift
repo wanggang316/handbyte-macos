@@ -132,7 +132,7 @@ struct OverviewView: View {
             Card(label: "Storage", action: { store.section = .storage }) {
                 cardBody(
                     value: store.volume.map { "\(ByteFormat.string($0.usedBytes)) used" } ?? "Planned",
-                    text: "A view of the disk, folder by folder, is planned."
+                    text: "See what fills your home folder, folder by folder."
                 )
             }
         }

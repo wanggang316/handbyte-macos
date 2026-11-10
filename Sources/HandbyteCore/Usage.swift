@@ -54,6 +54,13 @@ public struct UsageProgress: Sendable, Hashable {
     public var currentPath: String
     /// One entry for each direct child of the root, in name order.
     public var top: [Top]
+
+    public init(fileCount: Int = 0, allocatedBytes: Int64 = 0, currentPath: String, top: [Top] = []) {
+        self.fileCount = fileCount
+        self.allocatedBytes = allocatedBytes
+        self.currentPath = currentPath
+        self.top = top
+    }
 }
 
 /// The outcome of a scan. After a cancellation it holds what was measured
