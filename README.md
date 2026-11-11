@@ -2,12 +2,12 @@
 
 Handbyte.app is a native SwiftUI app that reviews caches and build output on a
 Mac before cleanup. It groups candidates by application or project, explains
-the rebuild cost, and checks eligibility again before each action. Native
-macOS Trash is the default.
+the rebuild cost, and checks eligibility again before each action. Regenerable files are removed directly by default; other files use macOS
+Trash. "Always use the Trash" applies the Trash to all cleanup items.
 
-The app applies the same cleanup rules as the
-[`handbyte` CLI](https://github.com/wanggang316/handbyte). The two are separate
-implementations; [`SYNC.md`](SYNC.md) records how they stay aligned.
+The macOS app is maintained and released independently. Its rule catalog,
+fixtures, website, and update feed are owned by this repository. The Go CLI
+is an optional companion; [`SYNC.md`](SYNC.md) records comparison notes.
 
 ## Install
 
@@ -30,7 +30,7 @@ make build          # swift build of the HandbyteCore and HandbyteUI packages
 make test           # swift test
 make generate       # xcodegen: writes Handbyte.xcodeproj from project.yml
 make app            # unsigned Debug build of Handbyte.app
-make sync-check     # shared catalog matches the CLI (HANDBYTE_CLI_SRC=../handbyte to use a checkout)
+make sync-check     # optional local CLI comparison (requires HANDBYTE_CLI_SRC)
 make test-scripts   # tests for the release scripts
 make icon           # redraw the app icon set from scripts/render-app-icon.swift
 ```
@@ -49,10 +49,10 @@ Merging a release PR publishes the release. The runbook is
 3. `release-merge.yml` verifies the merged commit and creates the annotated
    tag. It calls `release.yml` to sign, notarize, and build the DMG and
    Sparkle appcast, then checks the assets and publishes the GitHub Release.
-4. It calls `publish.yml` to commit the appcast to `docs/` of
-   [wanggang316/handbyte](https://github.com/wanggang316/handbyte), which
-   GitHub Pages serves at <https://handbyte.gumpw.com/appcast.xml>, and update
-   the Homebrew cask in `wanggang316/homebrew-tap`.
+4. It calls `publish.yml` to deploy the website and appcast from this
+   repository to GitHub Pages and update the Homebrew cask. The two jobs run
+   independently. The feed stays at <https://handbyte.gumpw.com/appcast.xml>
+   so installed clients can continue to update.
 
 Retry failed jobs in `release-merge` after a transient failure. Manual tag
 pushes and workflow dispatch remain available: they create a draft release,
@@ -60,8 +60,34 @@ which must be published separately to trigger distribution.
 
 The release workflows read these repository secrets:
 `DEVELOPER_ID_CERT_P12_BASE64`, `DEVELOPER_ID_CERT_PASSWORD`, `AC_API_KEY_ID`,
-`AC_API_ISSUER_ID`, `AC_API_KEY_P8`, `SPARKLE_PRIVATE_KEY` and `PUBLISH_TOKEN`.
+`AC_API_ISSUER_ID`, `AC_API_KEY_P8`, `SPARKLE_PRIVATE_KEY` and `HOMEBREW_TAP_TOKEN`.
 The header of each workflow file says how to obtain them.
+`HOMEBREW_TAP_TOKEN` needs Contents read/write access only to
+`wanggang316/homebrew-tap`. Website deployment uses this repository's
+`GITHUB_TOKEN` with Pages and OIDC permissions.
+
+## Website and update feed
+
+`site/` contains the macOS website. `website.yml` builds it with the latest
+stable release's signed `appcast.xml` and deploys a Pages artifact. It runs
+when website files change, during publication, or through manual dispatch.
+No workflow writes to the Go CLI repository.
+
+The Pages site uses **GitHub Actions** as its source and owns the custom
+domain `handbyte.gumpw.com`. Keep the domain and `/appcast.xml` path stable:
+versions 0.1.0 and 0.2.0 already use them. The release feed is copied without
+modification from this repository's GitHub Release.
+
+The historical `/install.sh` endpoint remains available for existing Go CLI
+installation commands. It is a compatibility file, excluded from macOS
+builds and releases. The website offers the macOS DMG and Homebrew cask.
+
+To preview the website with an existing release feed:
+
+```sh
+python3 scripts/build-site.py --tag v0.2.0 --appcast /tmp/appcast.xml --output /tmp/handbyte-site
+python3 -m http.server 8080 --directory /tmp/handbyte-site
+```
 
 ## License
 

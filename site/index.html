@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>handbyte — reclaim the gigabytes your Mac forgot about</title>
+  <meta name="description" content="Handbyte is a native macOS app to review caches, explore storage, remove apps, and restore items from the Trash." />
+  <meta name="theme-color" content="#0a0d12" />
+  <meta property="og:title" content="handbyte" />
+  <meta property="og:description" content="Reclaim the gigabytes your Mac forgot about. Native macOS storage and cleanup app." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://handbyte.gumpw.com/" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <!-- Background grid + glow -->
+  <div class="bg" aria-hidden="true">
+    <div class="bg__grid"></div>
+    <div class="bg__glow bg__glow--a"></div>
+    <div class="bg__glow bg__glow--b"></div>
+  </div>
+
+  <header class="nav">
+    <div class="nav__inner">
+      <a href="#" class="logo" aria-label="handbyte home">
+        <svg class="logo__mark" viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">
+          <path fill="currentColor" d="M21 8H29a3.5 3.5 0 0 1 3.5 3.5V20.5a11 11 0 0 0 11 11H52.5a3.5 3.5 0 0 1 3.5 3.5V43a13 13 0 0 1-13 13H21A13 13 0 0 1 8 43V21A13 13 0 0 1 21 8z"/>
+          <rect class="logo__byte" x="37" y="8" width="19" height="19" rx="6.5" fill="#3ddc97"/>
+        </svg>
+        <span class="logo__word">handbyte</span>
+      </a>
+
+      <a class="ghbtn" href="https://github.com/wanggang316/handbyte-macos" target="_blank" rel="noopener" aria-label="Source on GitHub">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M12 .5A11.5 11.5 0 0 0 .5 12a11.5 11.5 0 0 0 7.86 10.92c.58.11.79-.25.79-.56v-2c-3.2.69-3.87-1.36-3.87-1.36-.52-1.33-1.27-1.68-1.27-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.02 1.75 2.69 1.25 3.34.96.1-.74.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.7 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.04 0 0 .96-.31 3.15 1.18a10.93 10.93 0 0 1 5.74 0c2.19-1.49 3.15-1.18 3.15-1.18.62 1.58.23 2.75.11 3.04.74.81 1.18 1.84 1.18 3.1 0 4.43-2.7 5.41-5.26 5.69.41.36.78 1.06.78 2.14v3.17c0 .31.21.68.8.56A11.5 11.5 0 0 0 23.5 12 11.5 11.5 0 0 0 12 .5z"/></svg>
+        <span>GitHub</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__inner">
+        <div class="hero__copy">
+          <p class="kicker">
+            <span class="kicker__dot"></span>
+            <span>macOS 14+ · Apple silicon and Intel</span>
+          </p>
+
+          <h1 class="h1">
+            Reclaim the<br/>
+            <span class="h1__accent">gigabytes</span> your<br/>
+            Mac forgot about.
+          </h1>
+
+          <p class="lede">
+            Handbyte brings Smart Clean, Storage, Apps and History into one native Mac app.
+            Review what takes space, clean regenerable files, and restore items that are still in the Trash.
+          </p>
+          <div class="install">
+            <a class="dlbtn" id="download-mac" href="{{DOWNLOAD_URL}}">Download for Mac</a>
+            <p class="install__meta">v{{VERSION}} · Signed and notarized DMG · macOS 14+</p>
+            <button class="cmd" type="button" data-copy aria-label="Copy Homebrew install command">
+              <span class="cmd__prompt">$</span>
+              <code class="cmd__text">brew install --cask wanggang316/tap/handbyte</code>
+              <span class="cmd__copy">Copy</span>
+            </button>
+          </div>
+
+          <ul class="bullets">
+            <li><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 4 6 12 3 9"/></svg>Native macOS app</li>
+            <li><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 4 6 12 3 9"/></svg>Review before cleanup</li>
+            <li><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 4 6 12 3 9"/></svg>safe / review / hold tags</li>
+            <li><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="13 4 6 12 3 9"/></svg>Built-in updates</li>
+          </ul>
+        </div>
+
+        <div class="keys" aria-label="App sections">
+          <h3>One place to manage your storage</h3>
+          <dl>
+            <div><dt>Overview</dt><dd>Space and recent activity</dd></div>
+            <div><dt>Smart Clean</dt><dd>Caches and build output</dd></div>
+            <div><dt>Storage</dt><dd>Large files and folders</dd></div>
+            <div><dt>Apps</dt><dd>Apps and related files</dd></div>
+            <div><dt>History</dt><dd>Actions and Restore</dd></div>
+          </dl>
+        </div>
+      </div>
+    </section>
+
+    <!-- FEATURES -->
+    <section class="section" id="features">
+      <div class="section__inner">
+        <p class="eyebrow">Features</p>
+        <h2 class="h2">Built for devs who actually use their disk.</h2>
+
+        <div class="cards">
+          <article class="card">
+            <div class="card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M7 20h10M9 4v14"/></svg>
+            </div>
+            <h3>Smart Clean</h3>
+            <p>Review caches, logs and build output by area, then clean the selected items.</p>
+          </article>
+
+          <article class="card">
+            <div class="card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M5 6l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
+            </div>
+            <h3>Trash and Restore</h3>
+            <p>Regenerable files are removed directly. Other items use the Trash. Enable Always use the Trash to use it for every cleanup.</p>
+          </article>
+
+          <article class="card">
+            <div class="card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l9 4v6c0 5-3.5 8.5-9 10-5.5-1.5-9-5-9-10V6l9-4z"/></svg>
+            </div>
+            <h3>Safety levels</h3>
+            <p>Review each item before acting. Protected data and files used by running apps are held back.</p>
+          </article>
+
+          <article class="card">
+            <div class="card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            </div>
+            <h3>Storage explorer</h3>
+            <p>Explore folders in a treemap or list, find large files, and review selected items before moving them to the Trash.</p>
+          </article>
+
+          <article class="card">
+            <div class="card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6l9-3 9 3-9 3-9-3zM3 12l9 3 9-3M3 18l9 3 9-3"/></svg>
+            </div>
+            <h3>App removal</h3>
+            <p>Inspect an app and its related files together. Remove selected files, uninstall an app, or review leftovers.</p>
+          </article>
+
+          <article class="card">
+            <div class="card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            </div>
+            <h3>History</h3>
+            <p>See previous cleanup actions and restore items that are still in the Trash without replacing existing files.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- WHAT IT SCANS -->
+    <section class="section section--alt" id="scans">
+      <div class="section__inner">
+        <p class="eyebrow">What it scans</p>
+        <h2 class="h2">The usual suspects, automatically.</h2>
+
+        <div class="scan-grid">
+          <article class="scan">
+            <h4 class="scan__title">Xcode</h4>
+            <ul>
+              <li>DerivedData</li>
+              <li>iOS / watchOS / tvOS DeviceSupport</li>
+              <li>Archives, dSYMs</li>
+              <li>CoreSimulator caches</li>
+            </ul>
+          </article>
+          <article class="scan">
+            <h4 class="scan__title">Language toolchains</h4>
+            <ul>
+              <li><code>go-build</code>, Cargo, SwiftPM</li>
+              <li>npm, pnpm, yarn</li>
+              <li>Gradle, Maven</li>
+              <li>pip, pyenv, venvs</li>
+            </ul>
+          </article>
+          <article class="scan">
+            <h4 class="scan__title">App &amp; tool caches</h4>
+            <ul>
+              <li>Playwright, Cypress</li>
+              <li>JetBrains IDE caches</li>
+              <li>Homebrew, Codex</li>
+              <li>Per-app <code>~/Library/Caches/*</code></li>
+            </ul>
+          </article>
+          <article class="scan">
+            <h4 class="scan__title">VMs &amp; containers</h4>
+            <ul>
+              <li>OrbStack, Docker</li>
+              <li>Apple Container</li>
+              <li>Claude <code>vm_bundles</code></li>
+              <li>Trash, Downloads</li>
+            </ul>
+          </article>
+          <article class="scan">
+            <h4 class="scan__title">Project artifacts</h4>
+            <ul>
+              <li><code>node_modules</code>, <code>dist</code>, <code>.next</code>, <code>.turbo</code></li>
+              <li><code>target</code>, <code>build</code>, <code>.gradle</code></li>
+              <li><code>__pycache__</code>, <code>.venv</code>, <code>.mypy_cache</code></li>
+              <li><code>DerivedData</code>, <code>Pods</code>, <code>.dart_tool</code></li>
+            </ul>
+          </article>
+          <article class="scan">
+            <h4 class="scan__title">System hygiene</h4>
+            <ul>
+              <li><code>~/Library/Logs/*</code></li>
+              <li><code>~/Library/Containers/*</code></li>
+              <li><code>~/.cache/*</code></li>
+              <li>Trash</li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- SAFETY -->
+    <section class="section" id="safety">
+      <div class="section__inner section__inner--narrow">
+        <p class="eyebrow">Safety</p>
+        <h2 class="h2">Three signals,<br/>one decision.</h2>
+        <p class="section__lede">
+          Every scanned path is graded so you can power through obvious wins and pause on the rest.
+        </p>
+
+        <div class="safety">
+          <article class="safety__row safety__row--safe">
+            <span class="chip chip--safe chip--lg">safe</span>
+            <div>
+              <h3>Regenerable cache.</h3>
+              <p>Smart Clean selects eligible caches and build output for review.</p>
+            </div>
+          </article>
+          <article class="safety__row safety__row--rev">
+            <span class="chip chip--rev chip--lg">review</span>
+            <div>
+              <h3>Project artifacts &amp; large stores.</h3>
+              <p>Review the rebuild cost and keep files that your work still needs.</p>
+            </div>
+          </article>
+          <article class="safety__row safety__row--hold">
+            <span class="chip chip--hold chip--lg">hold</span>
+            <div>
+              <h3>User data or live state.</h3>
+              <p>Review valuable files separately. Items used by running apps are held back.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="cta">
+      <div class="cta__inner">
+        <p class="eyebrow">Get started</p>
+        <h2 class="h2">Make room for your next project.</h2>
+
+        <button class="cmd cmd--center" id="cmd-2" type="button" data-copy aria-label="Copy install command">
+          <span class="cmd__prompt">$</span>
+          <code class="cmd__text">brew install --cask wanggang316/tap/handbyte</code>
+          <span class="cmd__copy">
+            <svg class="i-copy" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            <svg class="i-check" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+        </button>
+
+        <p class="cta__or">or read the source on <a href="https://github.com/wanggang316/handbyte-macos" target="_blank" rel="noopener">GitHub →</a></p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="foot__inner">
+      <div class="foot__brand">
+        <span class="logo__word logo__word--sm">handbyte</span>
+        <span class="foot__muted">MIT · Native macOS app</span>
+      </div>
+      <nav class="foot__links">
+        <a href="https://github.com/wanggang316/handbyte-macos" target="_blank" rel="noopener">Source</a>
+        <a href="https://github.com/wanggang316/handbyte-macos/releases" target="_blank" rel="noopener">Releases</a>
+        <a href="https://github.com/wanggang316/handbyte-macos/issues" target="_blank" rel="noopener">Issues</a>
+        <a href="https://github.com/wanggang316/handbyte-macos/blob/main/README.md" target="_blank" rel="noopener">README</a>
+      </nav>
+    </div>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

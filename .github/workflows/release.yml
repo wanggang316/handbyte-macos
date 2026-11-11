@@ -117,9 +117,8 @@ jobs:
         run: brew install xcodegen create-dmg
 
       # The same gates as ci.yml, before any secret is touched.
-      - name: Check rule ids and run tests
+      - name: Run package and release tests
         run: |
-          make sync-check
           make test
           make test-scripts
 
