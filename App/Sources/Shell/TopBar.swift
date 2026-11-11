@@ -14,6 +14,7 @@ struct SectionTabs: View {
                 }
             }
         }
+        .padding(.horizontal, 4)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Sections")
     }
