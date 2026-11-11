@@ -2,10 +2,8 @@ import Foundation
 import Testing
 @testable import HandbyteCore
 
-/// Rule identifiers printed by the Go CLI as `Source`. `scripts/sync-check.sh`
-/// guards the shared catalog file; this literal makes a change of the rule
-/// set a deliberate edit on this side too.
-private let goRuleIDs: Set<String> = [
+/// Pin the bundled rule IDs so catalog changes are reviewed with the app.
+private let expectedRuleIDs: Set<String> = [
     "apple-container",
     "arc-cache",
     "arc-profile-cache",
@@ -87,8 +85,8 @@ private let goRuleIDs: Set<String> = [
     "yarn-cache",
 ]
 
-@Test func catalogIDsMatchGoCLI() {
-    #expect(Set(Catalog.rules.map(\.id)) == goRuleIDs)
+@Test func catalogIDsMatchExpectedRules() {
+    #expect(Set(Catalog.rules.map(\.id)) == expectedRuleIDs)
 }
 
 @Test func catalogRowCountsMatchGo() {

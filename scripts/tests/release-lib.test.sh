@@ -128,3 +128,10 @@ if [[ $FAILED -ne 0 ]]; then
   exit 1
 fi
 echo "release-lib tests passed"
+
+# The cask template must resolve from the script, independent of the caller's cwd.
+SHA256="$(printf '%064d' 0)"
+(cd "$TMP" && bash "$HERE/../render-cask.sh" 1.2.3 "$SHA256" "$TMP/handbyte.rb")
+grep -q '^  version "1.2.3"$' "$TMP/handbyte.rb"
+grep -q "^  sha256 \"$SHA256\"$" "$TMP/handbyte.rb"
+echo "cask rendering tests passed"

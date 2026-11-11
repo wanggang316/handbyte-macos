@@ -1,15 +1,5 @@
-# After a Handbyte release (tag vX.Y.Z) is published: copy its appcast.xml to
-# docs/ on main of wanggang316/handbyte, which GitHub Pages serves at
-# https://handbyte.gumpw.com/appcast.xml as the Sparkle feed and the landing
-# page reads for the download button, then update the Homebrew cask in
-# wanggang316/homebrew-tap.
-#
-# Called by release-merge.yml after publication, or by `release: published`
-# for manual releases. The feed and cask must reference a public stable release.
-#
-# Repository secret:
-#   PUBLISH_TOKEN  Fine-grained PAT with Contents: read and write on
-#                  wanggang316/handbyte and wanggang316/homebrew-tap.
+# Deploy this repository's website/feed and update Homebrew independently.
+# HOMEBREW_TAP_TOKEN needs Contents read/write on wanggang316/homebrew-tap.
 name: publish
 
 on:
@@ -29,13 +19,23 @@ on:
 
 permissions:
   contents: read
+  pages: write
+  id-token: write
 
 concurrency:
   group: publish
   cancel-in-progress: false
 
 jobs:
-  publish:
+  website:
+    if: github.event_name != 'release' || github.event.release.prerelease == false
+    uses: ./.github/workflows/website.yml
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+  homebrew:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -67,14 +67,16 @@ jobs:
       - name: Check secrets
         if: steps.meta.outputs.skip != 'true'
         env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
         run: |
-          if [ -z "$PUBLISH_TOKEN" ]; then
-            echo "::error::secret PUBLISH_TOKEN is not set (see the header of this workflow)"
+          if [ -z "$HOMEBREW_TAP_TOKEN" ]; then
+            echo "::error::secret HOMEBREW_TAP_TOKEN is not set (see the header of this workflow)"
             exit 1
           fi
 
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
         if: steps.meta.outputs.skip != 'true'
 
       - name: Download release assets
@@ -98,39 +100,17 @@ jobs:
           grep -q "releases/download/$TAG/Handbyte-$VERSION.dmg" appcast.xml \
             || { echo "::error::appcast.xml does not point at this release"; exit 1; }
 
-      - name: Publish appcast to the website repository
-        if: steps.meta.outputs.skip != 'true'
-        env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
-          VERSION: ${{ steps.meta.outputs.version }}
-        run: |
-          set -euo pipefail
-          SITE_DIR="$RUNNER_TEMP/site"
-          git clone --depth 1 --branch main "https://x-access-token:${PUBLISH_TOKEN}@github.com/wanggang316/handbyte.git" "$SITE_DIR"
-          cp "$RUNNER_TEMP/assets/appcast.xml" "$SITE_DIR/docs/appcast.xml"
-          cd "$SITE_DIR"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Stage first: `git diff` alone does not see a new, untracked file.
-          git add docs/appcast.xml
-          if git diff --cached --quiet; then
-            echo "::notice::docs/appcast.xml already up to date"
-            exit 0
-          fi
-          git commit -m "Publish the appcast for Handbyte $VERSION"
-          git push origin HEAD:main
-
       - name: Update Homebrew cask
         if: steps.meta.outputs.skip != 'true'
         env:
-          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: |
           set -euo pipefail
           SHA256="$(awk '{print $1}' "$RUNNER_TEMP/assets/Handbyte-$VERSION.dmg.sha256")"
           scripts/render-cask.sh "$VERSION" "$SHA256" "$RUNNER_TEMP/handbyte.rb"
           TAP_DIR="$RUNNER_TEMP/tap"
-          git clone --depth 1 "https://x-access-token:${PUBLISH_TOKEN}@github.com/wanggang316/homebrew-tap.git" "$TAP_DIR"
+          git clone --depth 1 "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/wanggang316/homebrew-tap.git" "$TAP_DIR"
           mkdir -p "$TAP_DIR/Casks"
           cp "$RUNNER_TEMP/handbyte.rb" "$TAP_DIR/Casks/handbyte.rb"
           cd "$TAP_DIR"

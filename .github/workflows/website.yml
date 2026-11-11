@@ -1,0 +1,49 @@
+name: website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - 'scripts/build-site.py'
+      - '.github/workflows/website.yml'
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: website
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - uses: actions/configure-pages@v5
+      - name: Build website with the latest stable appcast
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=$(gh release view --json tagName --jq .tagName)
+          gh release download "$TAG" --pattern appcast.xml --dir "$RUNNER_TEMP/feed"
+          python3 scripts/build-site.py --tag "$TAG" \
+            --appcast "$RUNNER_TEMP/feed/appcast.xml" --output "$RUNNER_TEMP/site"
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ${{ runner.temp }}/site
+      - name: Deploy website and update feed
+        id: deployment
+        uses: actions/deploy-pages@v4

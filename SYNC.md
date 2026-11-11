@@ -1,22 +1,25 @@
-# CLI and app rule synchronization
+# Optional CLI comparison
 
-The Go CLI ([wanggang316/handbyte](https://github.com/wanggang316/handbyte))
-and this app are separate implementations of the same cleanup scope. They
-stay aligned through two sets of shared files. The CLI repository is the
-source of truth, and this repository keeps byte-identical copies:
+The macOS app owns its rule catalog and fixtures. Build, test, release, and
+website deployment run from this repository without the Go CLI repository
+or an installed Go CLI. Edit the local files and validate them with
+`make test`.
 
-| CLI | App | Content |
-|---|---|---|
-| `catalog/*.json` | `Sources/HandbyteCore/Resources/catalog/` | `cleanup.json`: the cleanup rules (ID, location with `*` wildcards, category, tier, area, data class, owner apps and processes, texts). `storage.json`: the storage categories. `apps.json`: where apps keep files and the matching rules. `system.json`: the narrow root-owned rules. |
-| `testdata/conformance/` | `Tests/HandbyteCoreTests/Conformance/` | Fixture cases: cleanup candidates, storage sizes, storage categories, app files and leftovers. Run by `go test` and by `swift test`. |
+| Local path | Content |
+|---|---|
+| `Sources/HandbyteCore/Resources/catalog/` | Cleanup, storage, app matching, and system cleanup rules bundled with the app. |
+| `Tests/HandbyteCoreTests/Conformance/` | Regression cases executed by `swift test`. |
 
-`scripts/sync-check.sh` fails CI when a copy differs. It reads the CLI from
-`HANDBYTE_CLI_SRC` or downloads it at `HANDBYTE_CLI_REF` (default: `main`).
-To change a rule, change it in the CLI repository, then run
-`scripts/sync-check.sh --update` here.
+The Go CLI is an optional companion. For a deliberate comparison, point
+`HANDBYTE_CLI_SRC` at a local checkout and run `make sync-check`.
+This command reports differences without downloading or overwriting files.
+`make parity` is a separate manual scanner comparison. Neither command is a
+CI or release gate, and differences do not require changes in the CLI first.
 
-The rules are data, so the table below records only how each side applies a
-rule. This file is the human-maintained record of where each rule stands.
+The table below records the previous comparison with the CLI. Its CLI
+column is a historical reference, not a claim about the current upstream
+version. Journal compatibility lets existing app and CLI history remain
+readable without requiring the CLI to be installed.
 
 States:
 

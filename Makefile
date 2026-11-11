@@ -15,6 +15,7 @@ test:
 test-scripts:
 	bash scripts/tests/release-lib.test.sh
 	bash scripts/tests/prepare-release-tag.test.sh
+	python3 -B scripts/tests/build-site.test.py
 
 sync-check:
 	scripts/sync-check.sh

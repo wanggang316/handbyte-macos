@@ -10,8 +10,7 @@ let package = Package(
         .executable(name: "hbscan", targets: ["hbscan"]),
     ],
     targets: [
-        // The catalog is a byte-identical copy of `catalog/` in the CLI
-        // repository; `scripts/sync-check.sh` compares the two.
+        // The macOS app owns and tests its bundled rule catalog.
         .target(name: "HandbyteCore", resources: [.copy("Resources/catalog")]),
         // Selection, grouping and report logic for the app. No AppKit or
         // SwiftUI so it is testable with `swift test`.
