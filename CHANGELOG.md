@@ -14,71 +14,7 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Added
 
-- An Overview screen with the free space, one main action and the result of
-  the last scan.
-- A top bar with the sections Overview, Clean, Apps, Storage and History.
-- A Storage section: a scan of the home folder that shows running totals,
-  then a treemap and a list of the opened folder, and the largest files.
-  It is read-only. A folder that a cleanup rule covers is marked, and
-  "Review in Clean" opens Clean.
-- Storage sums the home folder by categories (Apps, Developer, Documents,
-  Media, Caches and logs, Other) and keeps the last result. The next scan
-  shows the last sizes until each folder is measured again, and the
-  Overview splits the used space by these categories.
-- Storage can pick files and folders for the Trash. The picked items are
-  reviewed in one sheet and moved to the Trash; each move is recorded in
-  the operations log. Standard folders, private data such as
-  `~/Library/Keychains`, excluded paths and symbolic links cannot be picked,
-  and a folder that a cleanup rule covers points to Clean.
-- The Overview names the purgeable part of the free space.
-- Smart Clean names the old system logs (crash reports older than 30 days,
-  rotated logs older than 7 days, logs in /Library/Logs older than 30
-  days). Clean with Password runs fixed commands as root after the macOS
-  password dialog; they are the same as `handbyte clean --system`. The
-  unified log of macOS is shown apart: Erase runs `log erase --all` only
-  after its own confirmation.
-- Apps lists the installed apps with size, last use, source, version and
-  architectures, with the filters All, Unused, Largest and Leftovers. The
-  inspector shows the files each app keeps in ~/Library with how sure the
-  match is; caches, logs and state are selected, the app's data only on
-  request. Uninstall moves the app and the selected files to the Trash;
-  Remove Files Only keeps the app. Apps of macOS, apps from Homebrew and
-  running apps are refused with the reason. Leftovers lists data of removed
-  apps for review; nothing in it is selected.
-- Apps also finds the launchd jobs of an app (by the bundle ID they name or
-  the program they run), the group containers of its signing team and its
-  files in /Library. The files in /Library belong to root: they are listed
-  with Show in Finder and not removed. An app with a system extension is
-  refused. A Homebrew app can be removed with `brew uninstall --cask` after
-  a confirmation.
-- A command palette (⌘K) finds sections and actions by typing. ⌘1 to ⌘5
-  open the sections and ⌘R runs Clean Now.
-- On the first run the Overview explains in three lines what Clean Now
-  takes, what goes to the Trash and where History is.
-- History lists each item that was removed or moved to the Trash, newest
-  first, by the app and by the CLI. An item in the Trash can be put back
-  with Restore; it never replaces anything at the original place and checks
-  that the Trash item is the one that was moved. One Restore puts back an
-  uninstalled app with its files.
-
 ### Changed
-
-- Clean opens Smart Clean: one screen that scans, shows what is safe to
-  clean area by area, cleans after one click and shows the freed space.
-  "Choose items" opens the full list with the safe items selected.
-- Caches, logs and build output are removed directly, because they rebuild
-  by themselves; other items go to the Trash. The setting "Always use the
-  Trash" keeps the old behavior.
-- The rule catalog has 50 more rules: browser caches for each profile, more
-  developer tools, VS Code and Electron app caches, crash reports, device
-  firmware, iOS backups and Mail downloads.
-
-- A new app icon and a new visual style: ink on paper with one green.
-- The cleanup rules come from a catalog file shared with the CLI. The
-  cleanup scope is the same.
-- The app and the CLI write one journal,
-  `~/Library/Application Support/handbyte/actions.jsonl`. The old
-  `~/Library/Logs/handbyte/operations.log` is still shown in History.
 
 ### Deprecated
 
@@ -87,6 +23,37 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 ### Fixed
 
 ### Security
+
+## [0.2.0] - 2026-11-11
+
+### Added
+
+- **See your Mac at a glance.** A new Overview shows storage categories,
+  available and purgeable space, and the last scan, with a new visual style.
+  Switch sections from the top bar or find actions with the command palette.
+- **Find large files in Storage.** Explore your home folder by category,
+  treemap or list, then review selected files before moving them to the Trash.
+  Protected paths stay excluded, and cleanup folders link to Clean.
+- **Review apps and their files together.** Find unused apps, inspect related
+  files and background items, and remove apps or files after review.
+  Protected and running apps stay blocked; Homebrew removal asks separately.
+- **Restore items from History.** See cleanup actions from the app and CLI
+  in one place, and restore items still in the Trash without replacing files.
+  An uninstalled app and its files can be restored together.
+- **Clean old system logs with explicit approval.** Review old crash reports
+  and system logs, then authorize cleanup with the macOS password dialog.
+  Erasing the unified log requires a separate confirmation.
+
+### Changed
+
+- **Smart Clean removes regenerable files directly by default.** Review and
+  clean caches, logs and build output in one screen; other items use the Trash.
+  Enable "Always use the Trash" to keep the previous behavior.
+- **Clean more browser and developer data.** The expanded catalog covers
+  browser profiles, developer tools, app caches, crash reports, device firmware,
+  iOS backups and Mail downloads, with review required for sensitive items.
+- **Navigate with the keyboard and VoiceOver.** Use section shortcuts and
+  the command palette to reach actions. Animations respect Reduce Motion.
 
 ## [0.1.0] - 2026-11-09
 
