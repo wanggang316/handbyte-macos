@@ -24,6 +24,13 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Security
 
+## [0.2.1] - 2026-11-12
+
+### Fixed
+
+- **Section tabs sit clear of the window edge.** The top-bar tabs now have a
+  small horizontal inset instead of touching the window sides.
+
 ## [0.2.0] - 2026-11-11
 
 ### Added
