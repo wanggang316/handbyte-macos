@@ -14,7 +14,7 @@
 #
 # Environment:
 #   APPCAST_URL  Published feed to read the highest build from
-#                (default: https://handbyte.gumpw.com/appcast.xml)
+#                (default: https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml)
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -22,7 +22,7 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$REPO_DIR/scripts/release-lib.sh"
 
 PROJECT_YML="$REPO_DIR/project.yml"
-APPCAST_URL="${APPCAST_URL:-https://handbyte.gumpw.com/appcast.xml}"
+APPCAST_URL="${APPCAST_URL:-https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml}"
 
 die() { echo "bump-version: $*" >&2; exit 1; }
 

@@ -46,7 +46,7 @@ targets:
         LSMinimumSystemVersion: "$(MACOSX_DEPLOYMENT_TARGET)"
         LSApplicationCategoryType: public.app-category.utilities
         NSHumanReadableCopyright: "Copyright 2026 Gump"
-        SUFeedURL: https://handbyte.gumpw.com/appcast.xml
+        SUFeedURL: https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml
         # Public half of the EdDSA key in the maintainer's login keychain
         # (`generate_keys -p`). The matching private key signs every update.
         SUPublicEDKey: "bRg+MnS8YhPSuwCkPXyrJ7RvwtYGy2vH0HR+1h/IUXo="

@@ -21,3 +21,16 @@ document.querySelectorAll('.cmd[data-copy]').forEach((btn) => {
   });
 });
 
+
+// Show the latest release version. The download link always resolves to the
+// latest release, so the page needs no rebuild per release.
+const latestVersion = document.getElementById('latest-version');
+if (latestVersion) {
+  fetch('https://api.github.com/repos/wanggang316/handbyte-macos/releases/latest')
+    .then((res) => (res.ok ? res.json() : null))
+    .then((release) => {
+      const tag = release?.tag_name;
+      if (/^v\d+\.\d+\.\d+$/.test(tag || '')) latestVersion.textContent = `${tag} · `;
+    })
+    .catch(() => {});
+}
