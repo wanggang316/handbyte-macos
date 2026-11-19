@@ -1,4 +1,4 @@
-# Deploy this repository's website/feed and update Homebrew independently.
+# Update the Homebrew cask for a published release.
 # HOMEBREW_TAP_TOKEN needs Contents read/write on wanggang316/homebrew-tap.
 name: publish
 
@@ -19,22 +19,12 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: publish
   cancel-in-progress: false
 
 jobs:
-  website:
-    if: github.event_name != 'release' || github.event.release.prerelease == false
-    uses: ./.github/workflows/website.yml
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-
   homebrew:
     runs-on: ubuntu-latest
     timeout-minutes: 10

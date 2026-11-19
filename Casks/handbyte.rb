@@ -19,7 +19,7 @@ cask "handbyte" do
   homepage "https://handbyte.gumpw.com"
 
   livecheck do
-    url "https://handbyte.gumpw.com/appcast.xml"
+    url "https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml"
     strategy :sparkle
   end
 

@@ -49,10 +49,9 @@ Merging a release PR publishes the release. The runbook is
 3. `release-merge.yml` verifies the merged commit and creates the annotated
    tag. It calls `release.yml` to sign, notarize, and build the DMG and
    Sparkle appcast, then checks the assets and publishes the GitHub Release.
-4. It calls `publish.yml` to deploy the website and appcast from this
-   repository to GitHub Pages and update the Homebrew cask. The two jobs run
-   independently. The feed stays at <https://handbyte.gumpw.com/appcast.xml>
-   so installed clients can continue to update.
+4. It calls `publish.yml` to update the Homebrew cask. Installed clients
+   read the update feed from the latest GitHub Release, so publication of
+   the release ships the update.
 
 Retry failed jobs in `release-merge` after a transient failure. Manual tag
 pushes and workflow dispatch remain available: they create a draft release,
@@ -63,30 +62,29 @@ The release workflows read these repository secrets:
 `AC_API_ISSUER_ID`, `AC_API_KEY_P8`, `SPARKLE_PRIVATE_KEY` and `HOMEBREW_TAP_TOKEN`.
 The header of each workflow file says how to obtain them.
 `HOMEBREW_TAP_TOKEN` needs Contents read/write access only to
-`wanggang316/homebrew-tap`. Website deployment uses this repository's
-`GITHUB_TOKEN` with Pages and OIDC permissions.
+`wanggang316/homebrew-tap`.
 
 ## Website and update feed
 
-`site/` contains the macOS website. `website.yml` builds it with the latest
-stable release's signed `appcast.xml` and deploys a Pages artifact. It runs
-when website files change, during publication, or through manual dispatch.
-No workflow writes to the Go CLI repository.
+The app reads its Sparkle feed from
+<https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml>.
+`release.yml` signs the feed and attaches it to each release, so the feed
+follows the latest published stable release without a separate deployment.
 
-The Pages site uses **GitHub Actions** as its source and owns the custom
-domain `handbyte.gumpw.com`. Keep the domain and `/appcast.xml` path stable:
-versions 0.1.0 and 0.2.0 already use them. The release feed is copied without
-modification from this repository's GitHub Release.
+`site/` contains the static macOS website. `website.yml` deploys it to GitHub
+Pages at `handbyte.gumpw.com` when website files change or through manual
+dispatch. The download button points at the latest release, and the page
+reads the latest version from the GitHub API, so releases do not redeploy
+the site.
 
 The historical `/install.sh` endpoint remains available for existing Go CLI
 installation commands. It is a compatibility file, excluded from macOS
 builds and releases. The website offers the macOS DMG and Homebrew cask.
 
-To preview the website with an existing release feed:
+To preview the website:
 
 ```sh
-python3 scripts/build-site.py --tag v0.2.0 --appcast /tmp/appcast.xml --output /tmp/handbyte-site
-python3 -m http.server 8080 --directory /tmp/handbyte-site
+python3 -m http.server 8080 --directory site
 ```
 
 ## License

@@ -9,8 +9,9 @@ An app release is **a release PR** from `release/vX.Y.Z` to `main`.
 Merging it starts `release-merge.yml`, which validates and tags the merged
 commit, calls `release.yml` to build, sign, notarize and create a draft,
 verifies all four assets, and publishes the release. It then calls
-`publish.yml` to deploy this repository's website and appcast to GitHub Pages
-and update the Homebrew cask. No Go CLI checkout is required.
+`publish.yml` to update the Homebrew cask. Installed clients read the feed
+from the latest release's `appcast.xml`, so publication ships the update.
+No Go CLI checkout is required.
 **Merging the release PR ships the release.**
 
 The contract CI enforces:
@@ -137,9 +138,10 @@ gh release view vX.Y.Z --json isDraft,assets,url
 
 Confirm the release is public and carries `Handbyte-X.Y.Z.dmg`,
 `Handbyte-X.Y.Z.dmg.sha256`, `Handbyte.dmg`, and `appcast.xml`.
-Confirm both distribution jobs passed, the website appcast at
-<https://handbyte.gumpw.com/appcast.xml> carries the new build, and
-`Casks/handbyte.rb` in `wanggang316/homebrew-tap` carries the new version.
+Confirm the Homebrew job passed, the feed at
+<https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml>
+carries the new build, and `Casks/handbyte.rb` in `wanggang316/homebrew-tap`
+carries the new version.
 Do not manually tag or publish during the normal flow. CI calls the reusable
 workflows directly because `GITHUB_TOKEN` does not trigger downstream events.
 
@@ -153,16 +155,13 @@ user approval.
 | Merge validation fails | Fix the version or notes in a new release PR. Never move an existing release tag. |
 | Build, notarization, or distribution fails | Inspect `gh run view <RUN_ID> --log-failed`, fix the cause, then rerun failed jobs. An existing tag is accepted only at the same merge commit. |
 | Tap push returns 403 | Repair `HOMEBREW_TAP_TOKEN` access: Contents read/write on `wanggang316/homebrew-tap`, then rerun the failed job. |
-| Website deployment fails | Check this repository's Pages configuration (GitHub Actions source), domain, and `github-pages` environment. Rerun the website job or dispatch `website.yml`. |
 | Manual fallback is needed | Push the annotated tag on the merged commit, or dispatch `release.yml` with an existing tag. Verify the four assets, then publish the draft with a user token to trigger `publish.yml`. |
 | Published release is broken | Mark its heading `[YANKED]` with a one-line reason and ship the fix as the next version. |
 
-The website and feed are deployed from this repository by `website.yml`.
-Its build reads the latest stable appcast from this repository's Release,
-then uploads it with `site/` as a Pages artifact. Keep the existing domain
-and feed path so installed clients continue to receive updates.
+The update feed is the `appcast.xml` asset of the latest stable release.
+The website (`website.yml`) is static and is not part of a release.
 
 When a workflow fix lands after a release, dispatch `publish.yml` on `main`
 with the published tag. Rerunning an old release run uses its old workflow
-revision and cannot pick up the fix. Website and Homebrew results must both
-pass before reporting the release as complete.
+revision and cannot pick up the fix. The Homebrew result must pass before
+reporting the release as complete.

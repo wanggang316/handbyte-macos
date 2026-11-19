@@ -22,7 +22,7 @@
 #   DOWNLOAD_URL_PREFIX       Where the DMG is published
 #                             (default: GitHub release for tag v$VERSION)
 #   PREVIOUS_APPCAST          Published feed to extend (default: download
-#                             https://handbyte.gumpw.com/appcast.xml; none
+#                             appcast.xml of the latest GitHub release; none
 #                             when that returns 404)
 #
 # Notarization runs only when credentials exist; otherwise the step prints
@@ -53,7 +53,7 @@ done
 DERIVED_DATA="${DERIVED_DATA:-.dd}"
 NOTARY_KEYCHAIN_PROFILE="${NOTARY_KEYCHAIN_PROFILE:-handbyte-notary}"
 PREVIOUS_APPCAST="${PREVIOUS_APPCAST:-}"
-FEED_URL="https://handbyte.gumpw.com/appcast.xml"
+FEED_URL="https://github.com/wanggang316/handbyte-macos/releases/latest/download/appcast.xml"
 SCHEME=Handbyte
 APP_NAME=Handbyte
 
