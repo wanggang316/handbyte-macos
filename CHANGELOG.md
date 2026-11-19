@@ -24,6 +24,13 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Security
 
+## [0.2.2] - 2026-11-19
+
+### Fixed
+
+- **Update checks find new versions again.** Handbyte now reads its update
+  feed from GitHub Releases, so a new version appears as soon as it ships.
+
 ## [0.2.1] - 2026-11-12
 
 ### Fixed
