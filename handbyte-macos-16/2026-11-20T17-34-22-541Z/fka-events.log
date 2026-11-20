@@ -1,0 +1,22 @@
+driver started fka=true AppleKeyboardUIMode=2 fullKeyboardAccess=true
+
+== Clean review, Full Keyboard Access ==
+  [fka-clean-tab01.png] responder=KeyViewProxy axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+  [fka-clean-tab02.png] responder=KeyViewProxy axFocused=AXButton "System & App Caches, 2 items, 176 kB" frame=(97.0, 610.0, 762.0, 34.0)
+  [fka-clean-tab03.png] responder=KeyViewProxy axFocused=AXButton "org.gonestudio.sketchpad, in /tmp/hb16/F/home/Library/Caches, Safety: Safe, 123 kB" frame=(90.0, 565.0, 779.0, 44.0)
+  [fka-clean-tab04.png] responder=KeyViewProxy axFocused=AXButton "com.agilebits.onepassword7, in /tmp/hb16/F/home/Library/Caches, Safety: Safe, 53 kB" frame=(90.0, 520.0, 779.0, 44.0)
+  [fka-clean-tab05.png] responder=KeyViewProxy axFocused=AXButton "Developer Caches, 3 items, 922 kB" frame=(97.0, 485.0, 762.0, 34.0)
+  [fka-clean-tab06.png] responder=KeyViewProxy axFocused=AXButton "go-build, in /tmp/hb16/F/home/Library/Caches, Safety: Safe, 410 kB" frame=(90.0, 440.0, 779.0, 44.0)
+
+== Apps, Full Keyboard Access ==
+  [fka-apps-tab01.png] responder=PlatformSwitch axFocused=AXCheckBox "" frame=(1145.0, 413.0, 38.0, 18.0)
+  [fka-apps-tab02.png] responder=KeyViewProxy axFocused=AXButton "com.agilebits.onepassword7, not selected" frame=(898.0, 377.0, 284.0, 29.0)
+  [fka-apps-tab03.png] responder=KeyViewProxy axFocused=AXButton "com.agilebits.onepassword7, selected" frame=(898.0, 340.0, 284.0, 29.0)
+  [fka-apps-tab04.png] responder=KeyViewProxy axFocused=AXButton "Remove Files Only…" frame=(894.0, 94.0, 144.5, 24.0)
+  [fka-apps-tab05.png] responder=KeyViewProxy axFocused=AXButton "Overview" frame=(470.5, 740.0, 80.5, 28.0)
+  [fka-apps-tab06.png] responder=KeyViewProxy axFocused=AXButton "Clean" frame=(553.0, 740.0, 58.5, 28.0)
+  [fka-apps-tab07.png] responder=KeyViewProxy axFocused=AXButton "Apps" frame=(613.5, 740.0, 57.0, 28.0)
+  [fka-apps-tab08.png] responder=KeyViewProxy axFocused=AXButton "Storage" frame=(672.5, 740.0, 72.0, 28.0)
+  [fka-apps-tab09.png] responder=KeyViewProxy axFocused=AXButton "History" frame=(746.5, 740.0, 67.5, 28.0)
+  [fka-apps-tab10.png] responder=KeyViewProxy axFocused=AXButton "All" frame=(712.5, 677.0, 40.5, 28.0)
+DONE

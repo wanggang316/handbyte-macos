@@ -1,0 +1,22 @@
+driver started fka=false AppleKeyboardUIMode=0 fullKeyboardAccess=false
+
+== Clean review ==
+  [clean-1-focused.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+  [clean-2-unfocused-search.png] responder=search field axFocused=AXTextField "" frame=(1010.0, 683.0, 150.0, 16.0)
+search yarn hides the highlighted row
+  [clean-3-tab-to-list-no-highlight.png] responder=KeyViewProxy axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+  [clean-4-down.png] responder=KeyViewProxy axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+
+== Apps ==
+  [apps-1-focused.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(80.0, 80.0, 799.0, 574.0)
+  [apps-2-unfocused.png] responder=AppKitWindow axFocused=AXWindow "Handbyte" frame=(80.0, 80.0, 1120.0, 700.0)
+
+== Leftovers ==
+  [leftovers-1-focused.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(80.0, 80.0, 799.0, 574.0)
+  [leftovers-2-unfocused.png] responder=AppKitWindow axFocused=AXWindow "Handbyte" frame=(80.0, 80.0, 1120.0, 700.0)
+
+== Storage ==
+storage lists=[(872.0, 136.0, 300.0, 485.0)]
+  [storage-1-focused.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(872.0, 136.0, 300.0, 532.0)
+  [storage-2-unfocused.png] responder=AppKitWindow axFocused=AXWindow "Handbyte" frame=(80.0, 80.0, 1120.0, 700.0)
+DONE
