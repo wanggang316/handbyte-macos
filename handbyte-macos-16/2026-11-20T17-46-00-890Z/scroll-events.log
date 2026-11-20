@@ -1,0 +1,16 @@
+driver started fka=false AppleKeyboardUIMode=0 fullKeyboardAccess=false
+
+== Clean review: highlighted row scrolled out of view ==
+  [scroll-clean-1-highlighted.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+scrolled by 900.0: clip origin=(0.0, 900.0) doc=(799.0, 1869.0)
+  [scroll-clean-2-row-offscreen.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+candidates=38
+scrolled by -900.0: clip origin=(0.0, 0.0) doc=(799.0, 1869.0)
+  [scroll-clean-3-row-back.png] responder=AppKitWindowHostingView<ModifiedContent<LazyView<ModifiedCon axFocused=AXScrollArea "" frame=(80.0, 124.0, 799.0, 530.0)
+
+== Apps: highlighted row scrolled out of view ==
+scrolled by 1500.0: clip origin=(0.0, 1500.0) doc=(799.0, 4282.0)
+DONE
+  [scroll-apps-1-highlighted.png] axFocused=AXScrollArea "" frame=(80.0, 80.0, 799.0, 574.0)
+  [scroll-apps-2-row-offscreen.png] axFocused=AXScrollArea "" frame=(80.0, 80.0, 799.0, 574.0)
+  [scroll-apps-3-down-brings-row-back.png] axFocused=AXScrollArea "" frame=(80.0, 80.0, 799.0, 574.0)
