@@ -7,10 +7,14 @@ import SwiftUI
 /// for cleanup is the checkbox; the highlighted row only drives the detail
 /// pane. The screen adds nothing to the window toolbar (ADR 001).
 struct ReviewView: View {
+    private enum Focus {
+        case search
+        case list
+    }
+
     @Environment(AppStore.self) private var store
-    @State private var highlighted: Candidate.ID?
-    @State private var collapsed: Set<HandbyteCore.Category> = []
-    @FocusState private var isSearchFocused: Bool
+    @State private var outline = ReviewOutline()
+    @FocusState private var focus: Focus?
 
     var body: some View {
         @Bindable var store = store
@@ -41,8 +45,8 @@ struct ReviewView: View {
     }
 
     private var highlightedCandidate: Candidate? {
-        guard let highlighted else { return nil }
-        return store.reviewList.candidates.first { $0.id == highlighted }
+        guard let id = outline.highlightedCandidateID else { return nil }
+        return store.reviewList.candidates.first { $0.id == id }
     }
 
     // MARK: Header
@@ -65,7 +69,7 @@ struct ReviewView: View {
                 Image(systemName: "magnifyingglass").foregroundStyle(HB.Palette.textTertiary).accessibilityHidden(true)
                 TextField("Search path or rule", text: query)
                     .textFieldStyle(.plain)
-                    .focused($isSearchFocused)
+                    .focused($focus, equals: .search)
                     .frame(width: 150)
             }
             .font(HB.Typography.body)
@@ -78,7 +82,7 @@ struct ReviewView: View {
         .overlay(alignment: .bottom) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
         .background {
             // ⌘F has no menu item; a button without size carries the shortcut.
-            Button("Find") { isSearchFocused = true }
+            Button("Find") { focus = .search }
                 .keyboardShortcut("f", modifiers: .command)
                 .opacity(0)
                 .frame(width: 0, height: 0)
@@ -100,28 +104,47 @@ struct ReviewView: View {
         return ScrollView {
             LazyVStack(spacing: 1) {
                 ForEach(groups) { group in
-                    let isExpanded = !collapsed.contains(group.category)
-                    GroupHeader(group: group, isExpanded: isExpanded, selection: $store.selection) {
-                        toggleExpansion(group.category)
+                    let isExpanded = outline.isExpanded(group.category)
+                    GroupHeader(group: group, isExpanded: isExpanded,
+                                isHighlighted: outline.highlighted == .group(group.category),
+                                selection: $store.selection) {
+                        outline.toggleExpansion(group.category, in: store.reviewList)
+                        focus = .list
                     }
+                    .id(ReviewListItem.group(group.category))
                     if isExpanded {
                         ForEach(group.candidates) { candidate in
-                            CandidateRow(candidate: candidate, isHighlighted: highlighted == candidate.id,
+                            CandidateRow(candidate: candidate,
+                                         isHighlighted: outline.highlighted == .candidate(candidate.id),
                                          selection: $store.selection) {
-                                highlighted = candidate.id
+                                outline.highlighted = .candidate(candidate.id)
+                                focus = .list
                             }
-                            .id(candidate.id)
+                            .id(ReviewListItem.candidate(candidate.id))
                         }
                     }
                 }
             }
             .padding(10)
         }
-        .keyboardSelection(store.reviewList.rowIDs(collapsed: collapsed), selection: $highlighted)
+        .keyboardSelection(outline.items(in: store.reviewList), selection: $outline.highlighted,
+                           open: { _ in outline.moveIn(in: store.reviewList) },
+                           back: { outline.moveOut(in: store.reviewList) })
+        .focused($focus, equals: .list)
         .onKeyPress(.space) {
-            guard let highlighted else { return .ignored }
-            store.selection.toggle(highlighted)
+            switch outline.highlighted {
+            case .candidate(let id):
+                store.selection.toggle(id)
+            case .group(let category):
+                guard store.selection.hasBulkSelectable(category) else { return .ignored }
+                store.selection.toggleGroup(category)
+            case nil:
+                return .ignored
+            }
             return .handled
+        }
+        .onChange(of: store.reviewList) { _, list in
+            outline.dropHiddenHighlight(in: list)
         }
         .overlay {
             if store.reviewList.totalCount == 0 {
@@ -132,14 +155,6 @@ struct ReviewView: View {
             }
         }
         .frame(maxWidth: .infinity)
-    }
-
-    private func toggleExpansion(_ category: HandbyteCore.Category) {
-        if collapsed.contains(category) {
-            collapsed.remove(category)
-        } else {
-            collapsed.insert(category)
-        }
     }
 
     // MARK: Footer
@@ -237,45 +252,67 @@ private struct Checkbox: View {
 private struct GroupHeader: View {
     let group: CandidateGroup
     let isExpanded: Bool
+    let isHighlighted: Bool
     @Binding var selection: Selection
     let toggleExpansion: () -> Void
     @State private var hovering = false
 
     var body: some View {
+        let canBulkSelect = selection.hasBulkSelectable(group.category)
         HStack(spacing: 8) {
             Checkbox(state: checkboxState, label: "Select all safe items in \(group.category.rawValue)") {
                 selection.toggleGroup(group.category)
             }
-            .disabled(!selection.hasBulkSelectable(group.category))
-            .opacity(selection.hasBulkSelectable(group.category) ? 1 : 0.4)
+            .disabled(!canBulkSelect)
+            .opacity(canBulkSelect ? 1 : 0.4)
             .help("Select every safe item in this group; review and hold items are skipped")
-            Image(systemName: "chevron.right")
+            // Only the part after the checkbox collapses the group, so a click
+            // on a disabled checkbox does not fall through to it.
+            HStack(spacing: 8) {
+                Image(systemName: "chevron.right")
                 .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(HB.Palette.textTertiary)
-                .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                .accessibilityHidden(true)
-            Text(group.category.rawValue).hbLabel()
-            Text("\(group.candidates.count)")
-                .font(HB.Typography.label)
-                .monospacedDigit()
-                .foregroundStyle(HB.Palette.textTertiary)
-            Spacer()
-            Text(group.partial ? "≥ \(ByteFormat.string(group.totalBytes))" : ByteFormat.string(group.totalBytes))
-                .font(HB.Typography.body)
-                .monospacedDigit()
-                .foregroundStyle(HB.Palette.textSecondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                Text(group.category.rawValue).hbLabel()
+                Text("\(group.candidates.count)")
+                    .font(HB.Typography.label)
+                    .monospacedDigit()
+                    .foregroundStyle(HB.Palette.textTertiary)
+                Spacer()
+                Text(totalText)
+                    .font(HB.Typography.body)
+                    .monospacedDigit()
+                    .foregroundStyle(HB.Palette.textSecondary)
+            }
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: toggleExpansion)
         }
         .padding(.horizontal, 10)
         .frame(height: 34)
-        .background(hovering ? HB.Palette.hover : .clear,
+        .background(isHighlighted ? HB.Palette.active : hovering ? HB.Palette.hover : .clear,
                     in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
-        .contentShape(Rectangle())
         .onHover { hovering = $0 }
-        .onTapGesture(perform: toggleExpansion)
         .hbAnimation(HB.Motion.quick, value: hovering)
         .hbAnimation(HB.Motion.quick, value: isExpanded)
-        .accessibilityElement(children: .contain)
-        .accessibilityAction(named: isExpanded ? "Collapse" : "Expand", toggleExpansion)
+        // One element, so VoiceOver reads the expanded state and its default
+        // action collapses or expands; the checkbox becomes a named action.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(group.category.rawValue), \(group.candidates.count == 1 ? "1 item" : "\(group.candidates.count) items"), \(totalText)")
+        .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+        .accessibilityAddTraits(isHighlighted ? [.isHeader, .isButton, .isSelected] : [.isHeader, .isButton])
+        .accessibilityAction { toggleExpansion() }
+        .accessibilityActions {
+            if canBulkSelect {
+                Button(selection.groupState(group.category) == .all ? "Deselect Safe Items" : "Select Safe Items") {
+                    selection.toggleGroup(group.category)
+                }
+            }
+        }
+    }
+
+    private var totalText: String {
+        group.partial ? "≥ \(ByteFormat.string(group.totalBytes))" : ByteFormat.string(group.totalBytes)
     }
 
     private var checkboxState: Checkbox.State {
@@ -340,9 +377,25 @@ private struct CandidateRow: View {
             Button("Never Clean This") { store.exclude(candidate) }
                 .disabled(store.isExcluded(candidate))
         }
-        .accessibilityElement(children: .contain)
+        // One element, so the default action of VoiceOver highlights the row
+        // and shows its details; the checkbox becomes a named action.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(selection.isSelected(candidate.id) ? "selected for cleanup" : "not selected")
         .accessibilityAddTraits(isHighlighted ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { highlight() }
+        .accessibilityActions {
+            if selection.canSelect(candidate) {
+                Button(selection.isSelected(candidate.id) ? "Deselect" : "Select") { selection.toggle(candidate.id) }
+            }
+            Button("Reveal in Finder") { store.reveal(candidate) }
+        }
+    }
+
+    private var accessibilityLabel: String {
+        var parts = [candidate.url.lastPathComponent, "Safety: \(SafetyBadge.label(candidate.rule.safety))", ByteFormat.string(candidate.size)]
+        if let reason = candidate.eligibility.blockedReason { parts.append("blocked: \(reason)") }
+        return parts.joined(separator: ", ")
     }
 }
 
