@@ -19,6 +19,8 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Changed
 
+- Apps, Leftovers, Storage and Clean lists: the highlighted row is stronger and outlined while its list has the keyboard focus, and a focused list with no highlighted row shows a thin frame. You can now see where the keys go after the search field takes the focus.
+
 ### Deprecated
 
 ### Removed
@@ -28,6 +30,7 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 - Clean list: a click on a dimmed group checkbox no longer collapses the group.
 - Clean list: a click on an item after typing a search moves the keyboard focus to the list, so Space and the arrows act on the list.
 - Clean list: when the search or a collapsed group hides the highlighted item, the highlight and the detail pane clear.
+- Clean list: with Full Keyboard Access, the item and group checkboxes show a focus ring again.
 
 ### Security
 

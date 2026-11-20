@@ -559,7 +559,7 @@ private struct StorageListRow: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 7)
-        .background(background, in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .hbRowBackground(isHighlighted: isSelected, hovering: hovering)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .gesture(TapGesture(count: 2).onEnded { store.open(row) })
@@ -574,11 +574,6 @@ private struct StorageListRow: View {
                 Button("Open") { store.open(row) }
             }
         }
-    }
-
-    private var background: Color {
-        if isSelected { return HB.Palette.active }
-        return hovering ? HB.Palette.hover : .clear
     }
 }
 

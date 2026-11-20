@@ -11,6 +11,8 @@ enum HB {
         static let surfaceHover = Color(light: 0xEFEFF1, dark: 0x25262A)
         static let hover = Color(light: 0x111214, dark: 0xFFFFFF, lightAlpha: 0.04, darkAlpha: 0.055)
         static let active = Color(light: 0x111214, dark: 0xFFFFFF, lightAlpha: 0.07, darkAlpha: 0.10)
+        /// The highlighted row of the list that has the keyboard focus.
+        static let activeFocused = Color(light: 0x111214, dark: 0xFFFFFF, lightAlpha: 0.13, darkAlpha: 0.17)
         static let border = Color(light: 0x111214, dark: 0xFFFFFF, lightAlpha: 0.08, darkAlpha: 0.09)
         static let borderStrong = Color(light: 0x111214, dark: 0xFFFFFF, lightAlpha: 0.20, darkAlpha: 0.20)
 

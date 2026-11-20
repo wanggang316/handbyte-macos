@@ -236,6 +236,7 @@ private struct Checkbox: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .hbFocusRing()
         .accessibilityLabel(label)
         .accessibilityValue(state == .on ? "selected" : state == .mixed ? "partly selected" : "not selected")
     }
@@ -290,8 +291,7 @@ private struct GroupHeader: View {
         }
         .padding(.horizontal, 10)
         .frame(height: 34)
-        .background(isHighlighted ? HB.Palette.active : hovering ? HB.Palette.hover : .clear,
-                    in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .hbRowBackground(isHighlighted: isHighlighted, hovering: hovering)
         .onHover { hovering = $0 }
         .hbAnimation(HB.Motion.quick, value: hovering)
         .hbAnimation(HB.Motion.quick, value: isExpanded)
@@ -374,8 +374,7 @@ private struct CandidateRow: View {
         .padding(.trailing, 10)
         .frame(height: 44)
         .opacity(isBlocked ? 0.6 : 1)
-        .background(isHighlighted ? HB.Palette.active : hovering ? HB.Palette.hover : .clear,
-                    in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .hbRowBackground(isHighlighted: isHighlighted, hovering: hovering)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture(perform: highlight)
