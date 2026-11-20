@@ -1,0 +1,19 @@
+driver started phase=idle
+phase=reviewing(HandbyteCore.ScanResult(candidates: [HandbyteCore.Candidate(id: "xcode windows=["(100.0, 100.0, 1120.0, 640.0)"]
+start: active=true key=true firstResponder=AppKitWindow query="" selected=34 highlighted=[] detail=<placeholder>
+  [screenshot 00-start.png]
+
+== R2b. Down at the last item scrolls it back into view ==
+Down to the end: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["node_modules"] detail=node_modules
+  node_modules,: on screen (frame y=144, list y=144..614)
+scroll the list to the top by hand: node_modules,: not in tree (off screen)
+  [screenshot r2b-scrolled-away.png]
+Down: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["node_modules"] detail=node_modules
+  node_modules,: on screen (frame y=144, list y=144..614)
+  [screenshot r2b-after-down.png]
+Up at the first item:
+  first item highlighted, scrolled to the bottom by hand: Developer Caches,: not in tree (off screen)
+Up: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["Developer Caches"] detail=<placeholder>
+  Developer Caches,: on screen (frame y=580, list y=144..614)
+
+DONE
