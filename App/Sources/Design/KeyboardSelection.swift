@@ -8,8 +8,9 @@ extension View {
     /// selection, also one that `open` or `back` set. Rows that are not a `List`
     /// get no keyboard path from SwiftUI, so the lists of the app use this.
     ///
-    /// Rows read `listHasFocus` through `hbRowBackground`. A focused list
-    /// with no highlighted row on screen shows a quiet frame.
+    /// Rows read `listHasFocus` through `hbRowBackground`, and the highlighted
+    /// row reports its frame. A focused list with no highlighted row on
+    /// screen shows a quiet frame.
     func keyboardSelection<ID: Hashable>(
         _ ids: [ID],
         selection: Binding<ID?>,
@@ -26,13 +27,18 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
     let open: ((ID) -> Void)?
     let back: (() -> Void)?
     @FocusState private var hasFocus: Bool
+    @State private var highlightedRow: CGRect?
+    @State private var viewport: CGRect = .zero
 
     func body(content: Content) -> some View {
         ScrollViewReader { proxy in
             content
                 .environment(\.listHasFocus, hasFocus)
+                .coordinateSpace(.named(KeyboardListSpace.name))
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .local) } action: { viewport = $0 }
+                .onPreferenceChange(HighlightedRowFrame.self) { highlightedRow = $0 }
                 .overlay {
-                    if ListFocus.showsFrame(hasFocus: hasFocus, selection: selection, ids: ids) {
+                    if ListFocus.showsFrame(hasFocus: hasFocus, highlightedRow: highlightedRow, viewport: viewport) {
                         RoundedRectangle(cornerRadius: HB.Radius.medium, style: .continuous)
                             .strokeBorder(HB.Palette.borderStrong, lineWidth: 1)
                             .padding(2)
@@ -85,6 +91,20 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
     }
 }
 
+private enum KeyboardListSpace {
+    static let name = "keyboardList"
+}
+
+/// The frame of the highlighted row in the coordinates of its keyboard list.
+/// A row that is not drawn reports nothing.
+private struct HighlightedRowFrame: PreferenceKey {
+    static let defaultValue: CGRect? = nil
+
+    static func reduce(value: inout CGRect?, nextValue: () -> CGRect?) {
+        value = value ?? nextValue()
+    }
+}
+
 extension EnvironmentValues {
     /// Whether the keyboard list around this view has the focus.
     @Entry var listHasFocus = false
@@ -99,6 +119,14 @@ private struct RowBackground: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous)
         content
             .background(fill, in: shape)
+            .background {
+                if isHighlighted {
+                    GeometryReader { proxy in
+                        Color.clear.preference(key: HighlightedRowFrame.self,
+                                               value: proxy.frame(in: .named(KeyboardListSpace.name)))
+                    }
+                }
+            }
             // The same line as the frame of a focused list without a
             // highlighted row: it marks where the keys go.
             .overlay {
