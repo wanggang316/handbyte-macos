@@ -299,7 +299,7 @@ private struct GroupHeader: View {
         // action collapses or expands; the checkbox becomes a named action.
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(group.category.rawValue), \(group.candidates.count == 1 ? "1 item" : "\(group.candidates.count) items"), \(totalText)")
-        .accessibilityValue(isExpanded ? "expanded" : "collapsed")
+        .accessibilityValue("\(isExpanded ? "expanded" : "collapsed"), \(selectionDescription)")
         .accessibilityAddTraits(isHighlighted ? [.isHeader, .isButton, .isSelected] : [.isHeader, .isButton])
         .accessibilityAction { toggleExpansion() }
         .accessibilityActions {
@@ -308,6 +308,14 @@ private struct GroupHeader: View {
                     selection.toggleGroup(group.category)
                 }
             }
+        }
+    }
+
+    private var selectionDescription: String {
+        switch selection.groupState(group.category) {
+        case .none: "no items selected"
+        case .some: "some items selected"
+        case .all: "all safe items selected"
         }
     }
 
@@ -393,7 +401,9 @@ private struct CandidateRow: View {
     }
 
     private var accessibilityLabel: String {
-        var parts = [candidate.url.lastPathComponent, "Safety: \(SafetyBadge.label(candidate.rule.safety))", ByteFormat.string(candidate.size)]
+        // The folder tells apart items with the same name, such as two node_modules.
+        var parts = [candidate.url.lastPathComponent, "in \(candidate.url.deletingLastPathComponent().fileSystemPath)",
+                     "Safety: \(SafetyBadge.label(candidate.rule.safety))", ByteFormat.string(candidate.size)]
         if let reason = candidate.eligibility.blockedReason { parts.append("blocked: \(reason)") }
         return parts.joined(separator: ", ")
     }
