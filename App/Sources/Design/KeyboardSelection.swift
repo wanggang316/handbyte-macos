@@ -25,6 +25,9 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
         ScrollViewReader { proxy in
             content
                 .focusable()
+                // The system ring uses the accent color and frames the whole
+                // list; the highlighted row already shows the focus.
+                .focusEffectDisabled()
                 .onKeyPress(.downArrow) { move(1, proxy) }
                 .onKeyPress(.upArrow) { move(-1, proxy) }
                 .onKeyPress(.return) { openSelection() }
