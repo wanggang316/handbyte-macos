@@ -3,7 +3,8 @@ import SwiftUI
 extension View {
     /// Lets a scroll view of rows take the keyboard focus. The up and down
     /// arrows move the selection, Return or the right arrow opens the
-    /// selected row, the left arrow goes back. Rows that are not a `List`
+    /// selected row, the left arrow goes back. The list scrolls to each new
+    /// selection, also one that `open` or `back` set. Rows that are not a `List`
     /// get no keyboard path from SwiftUI, so the lists of the app use this.
     func keyboardSelection<ID: Hashable>(
         _ ids: [ID],
@@ -37,6 +38,11 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
                     back()
                     return .handled
                 }
+                // In a key handler the binding still reads the old value, so
+                // the scroll waits for the change.
+                .onChange(of: selection) { _, selection in
+                    if let selection { proxy.scrollTo(selection) }
+                }
         }
     }
 
@@ -44,8 +50,13 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
         guard !ids.isEmpty else { return .ignored }
         let index = selection.flatMap { ids.firstIndex(of: $0) }
         let next = index.map { min(max($0 + step, 0), ids.count - 1) } ?? (step > 0 ? 0 : ids.count - 1)
-        selection = ids[next]
-        proxy.scrollTo(ids[next])
+        if ids[next] == selection {
+            // At the first or last row the selection does not change, so
+            // onChange does not run; bring the row back if it was scrolled away.
+            proxy.scrollTo(ids[next])
+        } else {
+            selection = ids[next]
+        }
         return .handled
     }
 

@@ -14,6 +14,9 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 
 ### Added
 
+- Clean list: the left and right arrows collapse and expand groups. Left moves from an item to its group header, then collapses the group; right expands it, then moves to its first item. Space on a group header selects its safe items.
+- Clean list: VoiceOver reads each item and group header as one element, with the selection or expanded state. Activating an item shows its details; selecting and Reveal in Finder are actions.
+
 ### Changed
 
 ### Deprecated
@@ -21,6 +24,10 @@ GitHub Release body and as the "What's New" notes in the in-app updater.
 ### Removed
 
 ### Fixed
+
+- Clean list: a click on a dimmed group checkbox no longer collapses the group.
+- Clean list: a click on an item after typing a search moves the keyboard focus to the list, so Space and the arrows act on the list.
+- Clean list: when the search or a collapsed group hides the highlighted item, the highlight and the detail pane clear.
 
 ### Security
 

@@ -6,6 +6,7 @@ struct SafetyBadge: View {
     let safety: Safety
 
     var body: some View {
+        let label = Self.label(safety)
         Text(label)
             .font(.caption2.weight(.semibold))
             .padding(.horizontal, 6)
@@ -15,7 +16,7 @@ struct SafetyBadge: View {
             .accessibilityLabel("Safety: \(label)")
     }
 
-    private var label: String {
+    static func label(_ safety: Safety) -> String {
         switch safety {
         case .auto: "Safe"
         case .review: "Review"

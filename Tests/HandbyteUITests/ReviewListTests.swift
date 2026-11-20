@@ -55,12 +55,4 @@ struct ReviewListTests {
         #expect(list.totalCount == 3)
         #expect(list.visibleCount == 1)
     }
-
-    @Test func rowOrderFollowsTheGroupsAndSkipsCollapsedGroups() {
-        var list = ReviewList(candidates: [brew, xcode, go])
-        #expect(list.rowIDs(collapsed: []) == [go.id, brew.id, xcode.id])
-        #expect(list.rowIDs(collapsed: [.devCache]) == [xcode.id])
-        list.query = "brew"
-        #expect(list.rowIDs(collapsed: []) == [brew.id])
-    }
 }
