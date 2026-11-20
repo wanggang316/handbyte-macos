@@ -87,6 +87,10 @@ To preview the website:
 python3 -m http.server 8080 --directory site
 ```
 
+## Design decisions
+
+- [001: The shell owns the window toolbar](docs/adrs/001-shell-owns-the-window-toolbar.md)
+
 ## License
 
 [MIT](LICENSE)
