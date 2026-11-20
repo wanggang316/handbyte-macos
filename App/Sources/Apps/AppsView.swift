@@ -152,8 +152,7 @@ private struct AppRow: View {
         .font(HB.Typography.body)
         .padding(.horizontal, 10)
         .frame(height: 48)
-        .background(isSelected ? HB.Palette.active : hovering ? HB.Palette.hover : .clear,
-                    in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .hbRowBackground(isHighlighted: isSelected, hovering: hovering)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { store.selectedAppID = app.id }
@@ -419,8 +418,7 @@ private struct LeftoverRow: View {
         .font(HB.Typography.body)
         .padding(.horizontal, 10)
         .frame(height: 44)
-        .background(isSelected ? HB.Palette.active : hovering ? HB.Palette.hover : .clear,
-                    in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .hbRowBackground(isHighlighted: isSelected, hovering: hovering)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { store.select(leftover: group.id) }
