@@ -1,0 +1,52 @@
+driver started phase=idle
+phase=reviewing(HandbyteCore.ScanResult(candidates: [HandbyteCore.Candidate(id: "xcode windows=["(100.0, 100.0, 1120.0, 640.0)"]
+start: active=true key=true firstResponder=AppKitWindow query="" selected=4 highlighted=[] detail=<placeholder>
+  [screenshot 00-start.png]
+
+== 1. Disabled group checkbox ==
+Project Build Artifacts header value=expanded (group has only review items: bulk-selectable=false)
+click on disabled checkbox -> header value=expanded firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=[] detail=<placeholder>
+  [screenshot 01-disabled-checkbox-clicked.png]
+control: click on header title -> header value=collapsed
+click on header title again -> header value=expanded
+
+== 2. Row click after typing in search moves focus to the list ==
+typed "caches" in search: firstResponder=search field query="caches" selected=4 highlighted=[] detail=<placeholder>
+click row go-build: firstResponder=list (focused SwiftUI view) query="caches" selected=4 highlighted=["go-build"] detail=go-build
+Space: firstResponder=list (focused SwiftUI view) query="caches" selected=3 highlighted=["go-build"] detail=go-build
+Space: firstResponder=list (focused SwiftUI view) query="caches" selected=4 highlighted=["go-build"] detail=go-build
+Down: firstResponder=list (focused SwiftUI view) query="caches" selected=4 highlighted=["Homebrew"] detail=Homebrew
+  [screenshot 02-row-click-focus-list.png]
+
+== 3a. Search hides the highlighted row ==
+search "derived": firstResponder=search field query="derived" selected=4 highlighted=[] detail=<placeholder>
+  [screenshot 03a-hidden-by-search.png]
+search cleared: firstResponder=search field query="" selected=4 highlighted=[] detail=<placeholder>
+
+== 3b. Collapse hides the highlighted row; Space does nothing ==
+click row Yarn: firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Yarn"] detail=Yarn
+click Developer Caches header: value=collapsed firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=[] detail=<placeholder>
+Space: firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=[] detail=<placeholder>
+  [screenshot 03b-hidden-by-collapse.png]
+expand Developer Caches: value=expanded firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=[] detail=<placeholder>
+
+== 4. Keyboard collapse and expand ==
+click row Homebrew: firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Homebrew"] detail=Homebrew
+Left: Developer Caches=expanded firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Developer Caches"] detail=<placeholder>
+Left: Developer Caches=collapsed firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Developer Caches"] detail=<placeholder>
+  [screenshot 04-keyboard-collapsed.png]
+Right: Developer Caches=expanded firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Developer Caches"] detail=<placeholder>
+Right: Developer Caches=expanded firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["go-build"] detail=go-build
+Down: firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Homebrew"] detail=Homebrew
+  [screenshot 04-keyboard-expanded.png]
+
+== 5. Accessibility ==
+row role=AXButton label="Yarn, Safety: Safe, 205 kB" value="selected for cleanup" actions=["AXScrollToVisible", "Reveal in Finder", "Deselect"]
+AXPress on Yarn row (VoiceOver VO-Space) returned true: firstResponder=list (focused SwiftUI view) query="" selected=4 highlighted=["Yarn"] detail=Yarn
+  [screenshot 05-axpress-row.png]
+header role=AXButton label="Xcode & iOS, 1 item, 512 kB" value="expanded" actions=["AXScrollToVisible", "Deselect Safe Items"]
+AXPress on Xcode header: value=collapsed
+AXPress on Xcode header: value=expanded
+disabled-group header actions=["AXScrollToVisible"]
+
+DONE
