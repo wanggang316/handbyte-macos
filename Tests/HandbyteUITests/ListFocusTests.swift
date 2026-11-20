@@ -1,3 +1,4 @@
+import CoreGraphics
 import Testing
 @testable import HandbyteUI
 
@@ -18,14 +19,27 @@ struct ListFocusTests {
         #expect(RowEmphasis(isHighlighted: false, isHovered: false, listHasFocus: true) == .none)
     }
 
+    let viewport = CGRect(x: 0, y: 0, width: 400, height: 300)
+
     @Test func focusedListShowsItsFrameOnlyWithoutAVisibleHighlightedRow() {
-        #expect(ListFocus.showsFrame(hasFocus: true, selection: nil as Int?, ids: [1, 2]))
-        #expect(!ListFocus.showsFrame(hasFocus: true, selection: 1, ids: [1, 2]))
-        #expect(!ListFocus.showsFrame(hasFocus: false, selection: nil as Int?, ids: [1, 2]))
+        let row = CGRect(x: 10, y: 100, width: 380, height: 44)
+        #expect(!ListFocus.showsFrame(hasFocus: true, highlightedRow: row, viewport: viewport))
+        #expect(ListFocus.showsFrame(hasFocus: true, highlightedRow: nil, viewport: viewport))
+        #expect(!ListFocus.showsFrame(hasFocus: false, highlightedRow: nil, viewport: viewport))
     }
 
-    @Test func aSelectionThatTheListDoesNotShowCountsAsNone() {
-        // A filter can hide the selected row; the list must still show focus.
-        #expect(ListFocus.showsFrame(hasFocus: true, selection: 3, ids: [1, 2]))
+    @Test func aHighlightedRowScrolledOutOfTheViewportCountsAsNone() {
+        // Scrolling with the pointer does not move the highlight.
+        let above = CGRect(x: 10, y: -200, width: 380, height: 44)
+        let below = CGRect(x: 10, y: 320, width: 380, height: 44)
+        #expect(ListFocus.showsFrame(hasFocus: true, highlightedRow: above, viewport: viewport))
+        #expect(ListFocus.showsFrame(hasFocus: true, highlightedRow: below, viewport: viewport))
+    }
+
+    @Test func aRowMostlyOutOfTheViewportCountsAsNone() {
+        let sliver = CGRect(x: 10, y: 290, width: 380, height: 44)
+        let mostly = CGRect(x: 10, y: 270, width: 380, height: 44)
+        #expect(ListFocus.showsFrame(hasFocus: true, highlightedRow: sliver, viewport: viewport))
+        #expect(!ListFocus.showsFrame(hasFocus: true, highlightedRow: mostly, viewport: viewport))
     }
 }
