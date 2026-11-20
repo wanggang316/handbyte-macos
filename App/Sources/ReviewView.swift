@@ -2,29 +2,39 @@ import HandbyteCore
 import HandbyteUI
 import SwiftUI
 
-/// Grouped candidate list with a detail pane. Selection for cleanup is the
-/// checkbox; the highlighted row only drives the detail pane.
+/// The Clean review screen on the section layout of Apps: header, then the
+/// grouped list, a divider and the detail pane, then the footer. Selection
+/// for cleanup is the checkbox; the highlighted row only drives the detail
+/// pane. The screen adds nothing to the window toolbar (ADR 001).
 struct ReviewView: View {
     @Environment(AppStore.self) private var store
     @State private var highlighted: Candidate.ID?
     @State private var collapsed: Set<HandbyteCore.Category> = []
+    @FocusState private var isSearchFocused: Bool
 
     var body: some View {
         @Bindable var store = store
-        NavigationSplitView {
-            list
-                .navigationSplitViewColumnWidth(min: 420, ideal: 520)
-                .toolbar { sidebarToolbar }
-        } detail: {
-            if let candidate = highlightedCandidate {
-                CandidateDetailView(candidate: candidate)
-            } else {
-                ContentUnavailableView("Select an item", systemImage: "doc.text.magnifyingglass",
-                                       description: Text("The detail pane shows the path, rule, activity and recovery notes."))
+        VStack(spacing: 0) {
+            header(sortOrder: $store.reviewList.sortOrder, query: $store.reviewList.query)
+            HStack(spacing: 0) {
+                list
+                Rectangle().fill(HB.Palette.border).frame(width: 1)
+                Group {
+                    if let candidate = highlightedCandidate {
+                        CandidateDetailView(candidate: candidate)
+                    } else {
+                        Text("Select an item to see its path, rule, activity and recovery notes.")
+                            .font(HB.Typography.body)
+                            .foregroundStyle(HB.Palette.textTertiary)
+                            .multilineTextAlignment(.center)
+                            .padding(24)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                }
+                .frame(width: 320)
             }
+            footer
         }
-        .searchable(text: $store.reviewList.query, placement: .toolbar, prompt: "Search path or rule")
-        .safeAreaInset(edge: .bottom) { footer }
         .sheet(isPresented: $store.isConfirming) {
             ConfirmSheet(candidates: store.selection.selectedCandidates)
         }
@@ -35,26 +45,79 @@ struct ReviewView: View {
         return store.reviewList.candidates.first { $0.id == highlighted }
     }
 
+    // MARK: Header
+
+    private func header(sortOrder: Binding<ReviewList.SortOrder>, query: Binding<String>) -> some View {
+        HStack(spacing: 14) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Clean").font(HB.Typography.title).foregroundStyle(HB.Palette.text)
+                Text(summary)
+                    .font(HB.Typography.body)
+                    .monospacedDigit()
+                    .foregroundStyle(HB.Palette.textTertiary)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            PillSegments(options: [(ReviewList.SortOrder.size, "Size"), (.name, "Name")], selection: sortOrder)
+                .help("Sort candidates by size or name")
+            RescanButton(action: store.startScan)
+            HStack(spacing: 6) {
+                Image(systemName: "magnifyingglass").foregroundStyle(HB.Palette.textTertiary).accessibilityHidden(true)
+                TextField("Search path or rule", text: query)
+                    .textFieldStyle(.plain)
+                    .focused($isSearchFocused)
+                    .frame(width: 150)
+            }
+            .font(HB.Typography.body)
+            .padding(.horizontal, 12)
+            .frame(height: 30)
+            .background(HB.Palette.surface, in: Capsule())
+        }
+        .padding(.horizontal, HB.Space.page)
+        .padding(.vertical, 16)
+        .overlay(alignment: .bottom) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
+        .background {
+            // ⌘F has no menu item; a button without size carries the shortcut.
+            Button("Find") { isSearchFocused = true }
+                .keyboardShortcut("f", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var summary: String {
+        let list = store.reviewList
+        let items = list.totalCount == 1 ? "1 item" : "\(list.totalCount) items"
+        return "\(items) · \(ByteFormat.string(list.totalBytes))"
+    }
+
+    // MARK: List
+
     private var list: some View {
         @Bindable var store = store
-        return List(selection: $highlighted) {
-            ForEach(store.reviewList.groups) { group in
-                Section(isExpanded: expansion(group.category)) {
-                    ForEach(group.candidates) { candidate in
-                        CandidateRow(candidate: candidate, selection: $store.selection)
-                            .tag(candidate.id)
-                            .contextMenu {
-                                Button("Reveal in Finder") { store.reveal(candidate) }
-                                Button("Never Clean This") { store.exclude(candidate) }
-                                    .disabled(store.isExcluded(candidate))
-                            }
+        let groups = store.reviewList.groups
+        return ScrollView {
+            LazyVStack(spacing: 1) {
+                ForEach(groups) { group in
+                    let isExpanded = !collapsed.contains(group.category)
+                    GroupHeader(group: group, isExpanded: isExpanded, selection: $store.selection) {
+                        toggleExpansion(group.category)
                     }
-                } header: {
-                    GroupHeader(group: group, selection: $store.selection)
+                    if isExpanded {
+                        ForEach(group.candidates) { candidate in
+                            CandidateRow(candidate: candidate, isHighlighted: highlighted == candidate.id,
+                                         selection: $store.selection) {
+                                highlighted = candidate.id
+                            }
+                            .id(candidate.id)
+                        }
+                    }
                 }
             }
+            .padding(10)
         }
-        .listStyle(.sidebar)
+        .keyboardSelection(store.reviewList.rowIDs(collapsed: collapsed), selection: $highlighted)
         .onKeyPress(.space) {
             guard let highlighted else { return .ignored }
             store.selection.toggle(highlighted)
@@ -68,32 +131,18 @@ struct ReviewView: View {
                 ContentUnavailableView.search(text: store.reviewList.query)
             }
         }
+        .frame(maxWidth: .infinity)
     }
 
-    private func expansion(_ category: HandbyteCore.Category) -> Binding<Bool> {
-        Binding(
-            get: { !collapsed.contains(category) },
-            set: { expanded in
-                if expanded { collapsed.remove(category) } else { collapsed.insert(category) }
-            }
-        )
-    }
-
-    /// Sort and rescan sit above the list; the detail column keeps the search field.
-    @ToolbarContentBuilder
-    private var sidebarToolbar: some ToolbarContent {
-        ToolbarItemGroup {
-            @Bindable var store = store
-            Picker("Sort", selection: $store.reviewList.sortOrder) {
-                Text("Size").tag(ReviewList.SortOrder.size)
-                Text("Name").tag(ReviewList.SortOrder.name)
-            }
-            .pickerStyle(.segmented)
-            .help("Sort candidates by size or name")
-            Button("Rescan", systemImage: "arrow.clockwise", action: store.startScan)
-                .help("Scan again")
+    private func toggleExpansion(_ category: HandbyteCore.Category) {
+        if collapsed.contains(category) {
+            collapsed.remove(category)
+        } else {
+            collapsed.insert(category)
         }
     }
+
+    // MARK: Footer
 
     private var footer: some View {
         HStack {
@@ -103,7 +152,7 @@ struct ReviewView: View {
                 .disabled(store.selection.selectedIDs.isEmpty)
             if case .reviewing(let result) = store.phase, result.cancelled {
                 Label("Scan cancelled: the list is incomplete", systemImage: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(HB.Palette.review)
             }
             if store.scanLackedFullDiskAccess {
                 MissingAccessNote()
@@ -111,75 +160,153 @@ struct ReviewView: View {
             Spacer()
             Text("\(store.selection.selectedIDs.count) selected, \(ByteFormat.string(store.selection.selectedBytes))")
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HB.Palette.textSecondary)
             if store.deletionMode == .removePermanently {
                 Button("Delete Permanently…", role: .destructive, action: store.requestConfirmation)
-                    .tint(.red)
+                    .tint(HB.Palette.danger)
                     .disabled(store.selection.selectedIDs.isEmpty)
             } else {
                 Button(store.deletionMode == .trash ? "Move to Trash…" : "Clean…", action: store.requestConfirmation)
                     .disabled(store.selection.selectedIDs.isEmpty)
             }
         }
+        .font(HB.Typography.body)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-        .background(.bar)
+        .overlay(alignment: .top) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
+    }
+}
+
+/// Rescan in the header: an icon and a label on the soft fill of the search field.
+private struct RescanButton: View {
+    let action: () -> Void
+    @State private var hovering = false
+
+    var body: some View {
+        Button(action: action) {
+            Label("Rescan", systemImage: "arrow.clockwise")
+                .font(HB.Typography.body)
+                .foregroundStyle(hovering ? HB.Palette.text : HB.Palette.textSecondary)
+                .padding(.horizontal, 12)
+                .frame(height: 30)
+                .background(hovering ? HB.Palette.surfaceHover : HB.Palette.surface, in: Capsule())
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .hbAnimation(HB.Motion.quick, value: hovering)
+        .help("Scan again")
+    }
+}
+
+/// A checkbox drawn with the design tokens, so no system accent color
+/// appears in the list.
+private struct Checkbox: View {
+    enum State {
+        case off
+        case mixed
+        case on
+    }
+
+    let state: State
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 14))
+                .foregroundStyle(state == .off ? HB.Palette.textTertiary : HB.Palette.brand)
+                .frame(width: 18, height: 18)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityValue(state == .on ? "selected" : state == .mixed ? "partly selected" : "not selected")
+    }
+
+    private var symbol: String {
+        switch state {
+        case .off: "square"
+        case .mixed: "minus.square.fill"
+        case .on: "checkmark.square.fill"
+        }
     }
 }
 
 private struct GroupHeader: View {
     let group: CandidateGroup
+    let isExpanded: Bool
     @Binding var selection: Selection
+    let toggleExpansion: () -> Void
+    @State private var hovering = false
 
     var body: some View {
-        HStack {
-            Button {
+        HStack(spacing: 8) {
+            Checkbox(state: checkboxState, label: "Select all safe items in \(group.category.rawValue)") {
                 selection.toggleGroup(group.category)
-            } label: {
-                Image(systemName: checkbox)
             }
-            .buttonStyle(.plain)
             .disabled(!selection.hasBulkSelectable(group.category))
-            .accessibilityLabel("Select all safe items in \(group.category.rawValue)")
+            .opacity(selection.hasBulkSelectable(group.category) ? 1 : 0.4)
             .help("Select every safe item in this group; review and hold items are skipped")
-            Text(group.category.rawValue)
-            Text("(\(group.candidates.count))")
-                .foregroundStyle(.secondary)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(HB.Palette.textTertiary)
+                .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                .accessibilityHidden(true)
+            Text(group.category.rawValue).hbLabel()
+            Text("\(group.candidates.count)")
+                .font(HB.Typography.label)
+                .monospacedDigit()
+                .foregroundStyle(HB.Palette.textTertiary)
             Spacer()
             Text(group.partial ? "≥ \(ByteFormat.string(group.totalBytes))" : ByteFormat.string(group.totalBytes))
+                .font(HB.Typography.body)
                 .monospacedDigit()
-                .foregroundStyle(.secondary)
+                .foregroundStyle(HB.Palette.textSecondary)
         }
+        .padding(.horizontal, 10)
+        .frame(height: 34)
+        .background(hovering ? HB.Palette.hover : .clear,
+                    in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture(perform: toggleExpansion)
+        .hbAnimation(HB.Motion.quick, value: hovering)
+        .hbAnimation(HB.Motion.quick, value: isExpanded)
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: isExpanded ? "Collapse" : "Expand", toggleExpansion)
     }
 
-    private var checkbox: String {
+    private var checkboxState: Checkbox.State {
         switch selection.groupState(group.category) {
-        case .none: "square"
-        case .some: "minus.square"
-        case .all: "checkmark.square.fill"
+        case .none: .off
+        case .some: .mixed
+        case .all: .on
         }
     }
 }
 
 private struct CandidateRow: View {
     let candidate: Candidate
+    let isHighlighted: Bool
     @Binding var selection: Selection
+    let highlight: () -> Void
+    @Environment(AppStore.self) private var store
+    @State private var hovering = false
 
     var body: some View {
-        HStack(spacing: 8) {
-            Toggle(isOn: Binding(
-                get: { selection.isSelected(candidate.id) },
-                set: { _ in selection.toggle(candidate.id) }
-            )) {
-                EmptyView()
+        let isBlocked = candidate.eligibility.blockedReason != nil
+        HStack(spacing: 10) {
+            Checkbox(state: selection.isSelected(candidate.id) ? .on : .off,
+                     label: "Select \(candidate.url.lastPathComponent)") {
+                selection.toggle(candidate.id)
             }
-            .toggleStyle(.checkbox)
-            .labelsHidden()
             .disabled(!selection.canSelect(candidate))
-            .accessibilityLabel("Select \(candidate.url.lastPathComponent)")
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 6) {
                     Text(candidate.url.lastPathComponent)
+                        .foregroundStyle(HB.Palette.text)
                         .lineLimit(1)
                     SafetyBadge(safety: candidate.rule.safety)
                     if let reason = candidate.eligibility.blockedReason {
@@ -187,17 +314,35 @@ private struct CandidateRow: View {
                     }
                 }
                 Text(candidate.url.deletingLastPathComponent().fileSystemPath)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(.system(size: 11))
+                    .foregroundStyle(HB.Palette.textTertiary)
                     .lineLimit(1)
                     .truncationMode(.middle)
             }
-            Spacer()
+            Spacer(minLength: 8)
             Text(ByteFormat.string(candidate.size))
                 .monospacedDigit()
-                .foregroundStyle(candidate.eligibility.blockedReason == nil ? .primary : .secondary)
+                .foregroundStyle(hovering || isHighlighted ? HB.Palette.text : HB.Palette.textSecondary)
         }
-        .opacity(candidate.eligibility.blockedReason == nil ? 1 : 0.6)
+        .font(HB.Typography.body)
+        .padding(.leading, 10)
+        .padding(.trailing, 10)
+        .frame(height: 44)
+        .opacity(isBlocked ? 0.6 : 1)
+        .background(isHighlighted ? HB.Palette.active : hovering ? HB.Palette.hover : .clear,
+                    in: RoundedRectangle(cornerRadius: HB.Radius.small, style: .continuous))
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture(perform: highlight)
+        .hbAnimation(HB.Motion.quick, value: hovering)
+        .contextMenu {
+            Button("Reveal in Finder") { store.reveal(candidate) }
+            Button("Never Clean This") { store.exclude(candidate) }
+                .disabled(store.isExcluded(candidate))
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(isHighlighted ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { highlight() }
     }
 }
 
@@ -206,51 +351,55 @@ struct CandidateDetailView: View {
     let candidate: Candidate
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(candidate.url.lastPathComponent)
-                            .font(.title2.weight(.semibold))
-                        SafetyBadge(safety: candidate.rule.safety)
+        VStack(alignment: .leading, spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Text(candidate.url.lastPathComponent)
+                                .font(HB.Typography.head)
+                                .foregroundStyle(HB.Palette.text)
+                                .lineLimit(2)
+                            SafetyBadge(safety: candidate.rule.safety)
+                        }
+                        Text(candidate.url.fileSystemPath)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(HB.Palette.textTertiary)
+                            .textSelection(.enabled)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    Text(candidate.url.fileSystemPath)
-                        .font(.callout.monospaced())
-                        .textSelection(.enabled)
-                        .foregroundStyle(.secondary)
-                    HStack {
-                        Button("Reveal in Finder", systemImage: "folder") { store.reveal(candidate) }
-                        Button("Never Clean This", systemImage: "hand.raised.slash") { store.exclude(candidate) }
-                            .disabled(store.isExcluded(candidate))
-                            .help("Add this path to the exclusion list. It stays blocked on every scan until removed in Settings.")
+                    if let reason = candidate.eligibility.blockedReason {
+                        Label("Blocked: \(reason). This item cannot be selected.", systemImage: "lock.fill")
+                            .font(HB.Typography.body)
+                            .foregroundStyle(HB.Palette.textSecondary)
+                    } else if let reason = candidate.eligibility.reviewOnlyReason {
+                        Label("Hold: \(reason). Excluded from bulk selection; select it one by one.", systemImage: "hand.raised.fill")
+                            .font(HB.Typography.body)
+                            .foregroundStyle(HB.Palette.danger)
                     }
+                    Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 12, verticalSpacing: 6) {
+                        fact("Size", ByteFormat.string(candidate.size)
+                            + (candidate.size.partial ? " (lower bound, \(candidate.size.errorCount) unreadable entries)" : ""))
+                        fact("Files", candidate.size.fileCount.formatted())
+                        fact("Last activity", lastActivity)
+                        fact("Rule", candidate.rule.id)
+                        fact("Category", candidate.rule.category.rawValue)
+                    }
+                    note("What it is", candidate.rule.summary)
+                    note("After removal", candidate.rule.recovery)
                 }
-                if let reason = candidate.eligibility.blockedReason {
-                    Label("Blocked: \(reason). This item cannot be selected.", systemImage: "lock.fill")
-                        .foregroundStyle(.secondary)
-                } else if let reason = candidate.eligibility.reviewOnlyReason {
-                    Label("Hold: \(reason). Excluded from bulk selection; select it one by one.", systemImage: "hand.raised.fill")
-                        .foregroundStyle(.red)
-                }
-                Grid(alignment: .leadingFirstTextBaseline, horizontalSpacing: 16, verticalSpacing: 8) {
-                    fact("Size", ByteFormat.string(candidate.size)
-                        + (candidate.size.partial ? " (lower bound, \(candidate.size.errorCount) unreadable entries)" : ""))
-                    fact("Files", candidate.size.fileCount.formatted())
-                    fact("Last activity", lastActivity)
-                    fact("Rule", candidate.rule.id)
-                    fact("Category", candidate.rule.category.rawValue)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("What it is").font(.headline)
-                    Text(candidate.rule.summary)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("After removal").font(.headline)
-                    Text(candidate.rule.recovery)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(18)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(24)
+            HStack {
+                Button("Reveal in Finder") { store.reveal(candidate) }
+                Spacer()
+                Button("Never Clean This") { store.exclude(candidate) }
+                    .disabled(store.isExcluded(candidate))
+                    .help("Add this path to the exclusion list. It stays blocked on every scan until removed in Settings.")
+            }
+            .padding(14)
+            .overlay(alignment: .top) { Rectangle().fill(HB.Palette.border).frame(height: 1) }
         }
     }
 
@@ -262,8 +411,22 @@ struct CandidateDetailView: View {
 
     private func fact(_ label: String, _ value: String) -> some View {
         GridRow {
-            Text(label).foregroundStyle(.secondary).gridColumnAlignment(.trailing)
-            Text(value).textSelection(.enabled)
+            Text(label).foregroundStyle(HB.Palette.textTertiary)
+            Text(value)
+                .foregroundStyle(HB.Palette.text)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(HB.Typography.body)
+    }
+
+    private func note(_ title: String, _ text: String) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title).hbLabel()
+            Text(text)
+                .font(HB.Typography.body)
+                .foregroundStyle(HB.Palette.textSecondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
