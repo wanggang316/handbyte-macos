@@ -29,8 +29,8 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
                 // The system ring uses the accent color and frames the whole
                 // list; the highlighted row already shows the focus.
                 .focusEffectDisabled()
-                .onKeyPress(.downArrow) { move(1) }
-                .onKeyPress(.upArrow) { move(-1) }
+                .onKeyPress(.downArrow) { move(1, proxy) }
+                .onKeyPress(.upArrow) { move(-1, proxy) }
                 .onKeyPress(.return) { openSelection() }
                 .onKeyPress(.rightArrow) { openSelection() }
                 .onKeyPress(.leftArrow) {
@@ -46,11 +46,17 @@ private struct KeyboardSelection<ID: Hashable>: ViewModifier {
         }
     }
 
-    private func move(_ step: Int) -> KeyPress.Result {
+    private func move(_ step: Int, _ proxy: ScrollViewProxy) -> KeyPress.Result {
         guard !ids.isEmpty else { return .ignored }
         let index = selection.flatMap { ids.firstIndex(of: $0) }
         let next = index.map { min(max($0 + step, 0), ids.count - 1) } ?? (step > 0 ? 0 : ids.count - 1)
-        selection = ids[next]
+        if ids[next] == selection {
+            // At the first or last row the selection does not change, so
+            // onChange does not run; bring the row back if it was scrolled away.
+            proxy.scrollTo(ids[next])
+        } else {
+            selection = ids[next]
+        }
         return .handled
     }
 
