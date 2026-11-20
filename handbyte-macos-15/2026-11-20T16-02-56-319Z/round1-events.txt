@@ -1,0 +1,48 @@
+driver started phase=idle
+phase=reviewing(HandbyteCore.ScanResult(candidates: [HandbyteCore.Candidate(id: "xcode windows=["(100.0, 100.0, 1120.0, 640.0)"]
+start: active=true key=true firstResponder=AppKitWindow query="" selected=34 highlighted=[] detail=<placeholder>
+  [screenshot 00-start.png]
+
+== R0. Enabled group checkbox at the top of the list ==
+header frame=(120.0, 570.0, 759.0, 34.0) list frame=[(100.0, 144.0, 799.0, 470.0)]
+click checkbox: value="expanded, no items selected" selected=31
+  [screenshot r0-checkbox.png]
+click checkbox: value="expanded, all safe items selected" selected=34
+
+== R0b. Disabled group checkbox (click at its real position) ==
+search "rust": Project Build Artifacts value="expanded, no items selected" bulk-selectable=false
+click disabled checkbox (x=129): value="expanded, no items selected" selected=34
+  [screenshot r0b-disabled-checkbox.png]
+control, click header title: value="collapsed, no items selected"
+search cleared: query=""
+click go-build row checkbox: selected=33
+click Clear button: selected=0
+click Select All Safe button: selected=34
+
+== R1. Left/Right scroll the new highlight into view ==
+click App-abc (first Xcode row), Down x20: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["Proj07-abc"] detail=Proj07-abc
+  Xcode & iOS,: not in tree
+  [screenshot r1-before-left.png]
+Left: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["Xcode & iOS"] detail=<placeholder>
+  Xcode & iOS,: on screen (frame y=580, list y=144..614)
+  [screenshot r1-after-left.png]
+Right: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["App-abc"] detail=App-abc
+Down to Project Build Artifacts header: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["Project Build Artifacts"] detail=<placeholder>
+  Project Build Artifacts,: on screen (frame y=144, list y=144..614)
+Left (collapse): value=collapsed, no items selected
+Right (expand): value=expanded, no items selected
+  target,: OFF SCREEN (frame y=99, list y=144..614)
+Right: firstResponder=list (focused SwiftUI view) query="" selected=34 highlighted=["target"] detail=target
+  target,: on screen (frame y=144, list y=144..614)
+  [screenshot r1-after-right.png]
+
+== R2. Accessibility labels and values ==
+  label="Project Build Artifacts, 2 items, 618 kB" value="expanded, no items selected"
+  label="target, in /tmp/hb15.VEYC/proj/rust, Safety: Review, 360 kB" value="not selected"
+  label="node_modules, in /tmp/hb15.VEYC/proj/web, Safety: Review, 258 kB" value="not selected"
+Developer Caches actions=["AXScrollToVisible", "Deselect Safe Items"]
+click Developer Caches checkbox: value="expanded, no items selected" selected=31
+click Developer Caches checkbox: value="expanded, all safe items selected" selected=34
+Space on Homebrew: value="expanded, some items selected"
+
+DONE
