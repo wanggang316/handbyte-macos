@@ -56,6 +56,12 @@ public struct ReviewList: Sendable, Equatable {
         }
     }
 
+    /// The rows on screen from top to bottom, for keyboard movement. Members
+    /// of a collapsed group are hidden, so the arrows skip them.
+    public func rowIDs(collapsed: Set<HandbyteCore.Category>) -> [Candidate.ID] {
+        groups.filter { !collapsed.contains($0.category) }.flatMap { $0.candidates.map(\.id) }
+    }
+
     private func matchesQuery(_ candidate: Candidate) -> Bool {
         let needle = query.trimmingCharacters(in: .whitespaces)
         guard !needle.isEmpty else { return true }
